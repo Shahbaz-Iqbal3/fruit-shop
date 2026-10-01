@@ -1,0 +1,15 @@
+create table if not exists items(id uuid primary key default gen_random_uuid(),name text not null,name_ur text,description text,price numeric not null,unit text default 'kg',image_url text,tag text default 'fresh' check (tag in ('fresh','one_day_old','on_sale')),sale_price numeric,available boolean default true,created_at timestamptz default now());
+create table if not exists orders(id uuid primary key default gen_random_uuid(),customer_name text,phone text,address text,note text,items jsonb not null,total numeric not null,status text default 'placed' check (status in ('placed','accepted','preparing','out_for_delivery','delivered','cancelled')),created_at timestamptz default now());
+create table if not exists owners(user_id uuid primary key);
+alter table items enable row level security;alter table orders enable row level security;alter table owners enable row level security;
+create or replace function is_owner() returns boolean language sql security definer stable as $$ select exists(select 1 from owners where user_id=auth.uid()) $$;
+create policy "read items" on items for select using (true);
+create policy "owner items" on items for all using (is_owner()) with check (is_owner());
+create policy "owner orders" on orders for all using (is_owner()) with check (is_owner());
+create or replace function place_order(p_name text,p_phone text,p_address text,p_note text,p_items jsonb,p_total numeric) returns uuid language sql security definer as $$ insert into orders(customer_name,phone,address,note,items,total) values(p_name,p_phone,p_address,p_note,p_items,p_total) returning id $$;
+create or replace function get_order(p_id uuid) returns table(status text,total numeric,items jsonb,created_at timestamptz) language sql security definer as $$ select status,total,items,created_at from orders where id=p_id $$;
+grant execute on function place_order(text,text,text,text,jsonb,numeric),get_order(uuid) to anon,authenticated;
+insert into storage.buckets(id,name,public) values('items','items',true) on conflict do nothing;
+create policy "public read" on storage.objects for select using (bucket_id='items');
+create policy "owner write" on storage.objects for all using (bucket_id='items' and is_owner()) with check (bucket_id='items' and is_owner());
+alter publication supabase_realtime add table orders;
