@@ -12,7 +12,7 @@ export default function Setup() {
       <h1 className="text-2xl font-bold text-stone-900">Set up your shop</h1>
       <p className="text-sm text-stone-600">Paste a Supabase access token (supabase.com → Account → Access Tokens). We create the database, photo storage, live orders and your owner login. Delete the token afterwards.</p>
       {inp('pat', 'Supabase access token', 'password')}{inp('shopName', 'Shop name')}{inp('email', 'Owner email', 'email')}{inp('password', 'Owner password', 'password')}
-      <button onClick={go} disabled={busy || !f.pat || !f.email || f.password.length < 6} className="w-full rounded-xl bg-rose-700 py-3 font-semibold text-white disabled:opacity-40">{busy ? 'Setting up… about 2 minutes' : 'Create my shop'}</button>
+      <button onClick={go} disabled={busy || !f.pat || !f.email || f.password.length < 6} className="w-full rounded-xl bg-[var(--brand)] py-3 font-semibold text-white disabled:opacity-40">{busy ? 'Setting up… about 2 minutes' : 'Create my shop'}</button>
       {st?.ok === false && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700 break-words">{st.error}</p>}
       {st?.ok && <div className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Done. {st.saved ? 'Restart the app (npm run dev), then open /admin.' : <>Add these to your host's environment variables, then redeploy:<pre className="mt-2 whitespace-pre-wrap break-all">{st.env}</pre></>}</div>}
     </main>)

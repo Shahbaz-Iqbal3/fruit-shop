@@ -17,7 +17,7 @@ export default async function Item({ params }: P) {
         <h1 className="text-2xl font-bold">{i.name}</h1>
         <p className="text-stone-600">{TAGS[i.tag]} · Rs {i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price} / {i.unit}</p>
         <p>{i.description}</p>
-        <a href="/" className="mt-3 block rounded-xl bg-rose-700 py-3 text-center font-semibold text-white">Order from the shop</a>
+        <a href="/" className="mt-3 block rounded-xl bg-[var(--brand)] py-3 text-center font-semibold text-white">Order from the shop</a>
       </div>
     </main>)
 }

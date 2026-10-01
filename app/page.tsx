@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { sb, configured, TAGS } from '@/lib/supabase'
+import { useShop, waLink } from '@/lib/shop'
 export default function Shop() {
   const r = useRouter()
+  const [shop] = useShop()
   const [items, setItems] = useState<any[]>([]), [cart, setCart] = useState<Record<string, number>>({}), [open, setOpen] = useState(false)
   const [f, setF] = useState({ name: '', phone: '', address: '', note: '' }), [busy, setBusy] = useState(false)
   useEffect(() => { if (!configured) { r.replace('/setup'); return } sb.from('items').select('*').eq('available', true).order('created_at', { ascending: false }).then(x => setItems(x.data || [])) }, [r])
@@ -18,7 +20,11 @@ export default function Shop() {
   }
   return (
     <main className="mx-auto max-w-2xl pb-28">
-      <h1 className="px-4 pt-6 text-3xl font-bold text-stone-900">Fresh fruit, today</h1>
+      <header className="flex items-center gap-3 px-4 pt-6">
+        {shop.logo_url && <img src={shop.logo_url} alt="" className="h-12 w-12 rounded-full object-cover" />}
+        <h1 className="flex-1 text-2xl font-bold text-stone-900">{shop.name}</h1>
+        {shop.whatsapp && <a href={waLink(shop.whatsapp, 'Hi, I have a question')} className="rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white">WhatsApp</a>}
+      </header>
       <div className="mt-4 grid grid-cols-2 gap-3 px-4">
         {items.map(i => (
           <div key={i.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
@@ -30,18 +36,18 @@ export default function Shop() {
               <div className="flex items-center gap-3 pt-1">
                 <button onClick={() => add(i.id, -1)} className="h-9 w-9 rounded-full bg-stone-100 text-lg active:scale-90 transition">−</button>
                 <span className="w-4 text-center">{cart[i.id] || 0}</span>
-                <button onClick={() => add(i.id, 1)} className="h-9 w-9 rounded-full bg-rose-700 text-lg text-white active:scale-90 transition">+</button>
+                <button onClick={() => add(i.id, 1)} className="h-9 w-9 rounded-full bg-[var(--brand)] text-lg text-white active:scale-90 transition">+</button>
               </div>
             </div>
           </div>))}
       </div>
-      {count > 0 && <button onClick={() => setOpen(true)} className="fixed inset-x-4 bottom-4 mx-auto max-w-2xl rounded-2xl bg-rose-700 py-4 font-semibold text-white shadow-lg">View order · {count} items · Rs {total}</button>}
+      {count > 0 && <button onClick={() => setOpen(true)} className="fixed inset-x-4 bottom-4 mx-auto max-w-2xl rounded-2xl bg-[var(--brand)] py-4 font-semibold text-white shadow-lg">View order · {count} items · Rs {total}</button>}
       {open && (
         <div className="fixed inset-0 z-10 flex items-end bg-black/40" onClick={() => setOpen(false)}>
           <div onClick={e => e.stopPropagation()} className="mx-auto w-full max-w-2xl space-y-3 rounded-t-3xl bg-white p-5">
             {lines.map(l => <p key={l.id} className="flex justify-between text-sm"><span>{l.name} × {l.qty} {l.unit}</span><span>Rs {l.price * l.qty}</span></p>)}
             {(['name', 'phone', 'address', 'note'] as const).map(k => <input key={k} placeholder={{ name: 'Your name', phone: 'Phone', address: 'Delivery address', note: 'Note (optional)' }[k]} value={f[k]} onChange={e => setF({ ...f, [k]: e.target.value })} className="w-full rounded-lg border border-stone-300 px-3 py-2" />)}
-            <button onClick={place} disabled={busy || !f.name || !f.phone || !f.address} className="w-full rounded-xl bg-rose-700 py-3 font-semibold text-white disabled:opacity-40">Place order · Rs {total} · Cash on delivery</button>
+            <button onClick={place} disabled={busy || !f.name || !f.phone || !f.address} className="w-full rounded-xl bg-[var(--brand)] py-3 font-semibold text-white disabled:opacity-40">Place order · Rs {total} · Cash on delivery</button>
           </div>
         </div>)}
     </main>)

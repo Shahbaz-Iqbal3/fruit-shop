@@ -13,3 +13,8 @@ insert into storage.buckets(id,name,public) values('items','items',true) on conf
 create policy "public read" on storage.objects for select using (bucket_id='items');
 create policy "owner write" on storage.objects for all using (bucket_id='items' and is_owner()) with check (bucket_id='items' and is_owner());
 alter publication supabase_realtime add table orders;
+create table if not exists shop_settings(id int primary key default 1 check (id=1),name text not null default 'Fresh Fruit Shop',logo_url text,color text not null default '#be123c',whatsapp text);
+insert into shop_settings(id) values(1) on conflict do nothing;
+alter table shop_settings enable row level security;
+create policy "read shop" on shop_settings for select using (true);
+create policy "owner shop" on shop_settings for all using (is_owner()) with check (is_owner());

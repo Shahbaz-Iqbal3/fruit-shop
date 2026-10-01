@@ -15,6 +15,7 @@ export async function POST(req: Request) {
     const ref = p.id
     for (let i = 0; i < 60; i++) { const s = await j(await fetch(`${API}/projects/${ref}`, { headers: h })); if (s.status === 'ACTIVE_HEALTHY') break; await new Promise(r => setTimeout(r, 5000)) }
     await sql(ref, fs.readFileSync(path.join(process.cwd(), 'supabase/schema.sql'), 'utf8'))
+    await sql(ref, `update shop_settings set name='${(shopName || 'My Fruit Shop').replace(/'/g, "''")}' where id=1`)
     const keys = await j(await fetch(`${API}/projects/${ref}/api-keys`, { headers: h }))
     const anon = keys.find((k: any) => k.name === 'anon').api_key
     const service = keys.find((k: any) => k.name === 'service_role').api_key
