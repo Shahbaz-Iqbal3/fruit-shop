@@ -10,6 +10,7 @@ export default function Shop() {
   const [shop] = useShop()
   const [items, setItems] = useState<any[] | null>(null), [cart, setCart] = useState<Record<string, number>>({}), [open, setOpen] = useState(false), [filter, setFilter] = useState('all')
   const [f, setF] = useState({ name: '', phone: '', address: '', note: '' }), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  useEffect(() => { try { const c = localStorage.getItem('cust'); if (c) setF(JSON.parse(c)) } catch {} }, [])
   useEffect(() => { if (!configured) { r.replace('/setup'); return } sb.from('items').select('*').eq('available', true).order('created_at', { ascending: false }).then(x => setItems(x.data || [])) }, [r])
   const price = (i: any) => (i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price)
   const shown = (items || []).filter(i => filter === 'all' || i.tag === filter)
@@ -19,7 +20,7 @@ export default function Shop() {
   const place = async () => {
     setBusy(true); setErr('')
     const { data, error } = await sb.rpc('place_order', { p_name: f.name, p_phone: f.phone, p_address: f.address, p_note: f.note, p_items: lines, p_total: total })
-    if (data) r.push('/order/' + data); else { setErr(error?.message || 'Could not place the order. Please try again.'); setBusy(false) }
+    if (data) { try { localStorage.setItem('cust', JSON.stringify({ ...f, note: '' })) } catch {} r.push('/order/' + data) } else { setErr(error?.message || 'Could not place the order. Please try again.'); setBusy(false) }
   }
   const step = (id: string) => (
     <div className="flex items-center justify-between gap-2">
