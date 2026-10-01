@@ -26,7 +26,7 @@ body {
 }
 
 :root { --brand: #be123c; }
-body { background: #fafaf9; color: #1c1917; font-size: 16px; line-height: 1.5; }
+body { background: #fbf8f3; color: #1c1917; font-size: 16px; line-height: 1.5; }
 button, a, label, select { touch-action: manipulation; }
 button:not(:disabled), select, input[type='checkbox'], input[type='file'] { cursor: pointer; }
 button { transition: opacity 150ms, transform 150ms, background-color 150ms; }
@@ -34,3 +34,4 @@ button:active:not(:disabled) { opacity: 0.8; }
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 @keyframes sheet { from { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation: none !important; transition: none !important; } }
+:root { --brand-soft: color-mix(in srgb, var(--brand) 10%, white); }
