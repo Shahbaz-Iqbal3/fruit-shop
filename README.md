@@ -7,3 +7,7 @@
 
 ## Shop branding
 Owner > /admin > "Shop branding": name, logo, brand color, WhatsApp number. Existing shops: run `supabase/migrations/001_shop_settings.sql` once in the Supabase SQL editor. New shops get it from setup.
+
+## Multi-shop platform
+- Shops live at `/s/<slug>` (owner panel `/s/<slug>/admin`). You manage all shops, plans, fees and payments at `/platform`.
+- New install: `/setup` creates the platform admin (you). Existing install: run `supabase/migrations/002_multitenant.sql` once, then add `SUPABASE_SERVICE_ROLE_KEY` (Supabase > Project Settings > API) to `.env.local` and Vercel. Never expose it in client code.

@@ -5,10 +5,10 @@ import { useShop, waLink } from '@/lib/shop'
 import { Icon, I } from '@/lib/icons'
 const STEPS = ['placed', 'accepted', 'preparing', 'out_for_delivery', 'delivered']
 const LABEL: Record<string, string> = { placed: 'Order placed', accepted: 'Accepted', preparing: 'Being prepared', out_for_delivery: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' }
-export default function Track({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function Track({ params }: { params: Promise<{ id: string; slug: string }> }) {
+  const { id, slug } = use(params)
   const [o, setO] = useState<any>(null)
-  const [shop] = useShop()
+  const [shop] = useShop(slug)
   useEffect(() => { const load = () => sb.rpc('get_order', { p_id: id }).then(x => setO(x.data?.[0])); load(); const t = setInterval(load, 5000); return () => clearInterval(t) }, [id])
   if (!o) return <div className="mx-auto w-full max-w-md space-y-3 p-4"><div className="h-24 animate-pulse rounded-2xl bg-stone-200" /><div className="h-64 animate-pulse rounded-2xl bg-stone-200" /></div>
   const at = STEPS.indexOf(o.status), done = o.status === 'delivered', bad = o.status === 'cancelled'
