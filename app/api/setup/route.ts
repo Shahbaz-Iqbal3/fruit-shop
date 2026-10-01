@@ -15,14 +15,14 @@ export async function POST(req: Request) {
     const ref = p.id
     for (let i = 0; i < 60; i++) { const s = await j(await fetch(`${API}/projects/${ref}`, { headers: h })); if (s.status === 'ACTIVE_HEALTHY') break; await new Promise(r => setTimeout(r, 5000)) }
     await sql(ref, fs.readFileSync(path.join(process.cwd(), 'supabase/schema.sql'), 'utf8'))
-    await sql(ref, fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/002_multitenant.sql'), 'utf8'))
+    await sql(ref, `update shop_settings set name='${(shopName || 'My Fruit Shop').replace(/'/g, "''")}' where id=1`)
     const keys = await j(await fetch(`${API}/projects/${ref}/api-keys`, { headers: h }))
     const anon = keys.find((k: any) => k.name === 'anon').api_key
     const service = keys.find((k: any) => k.name === 'service_role').api_key
     const url = `https://${ref}.supabase.co`
     const u = await j(await fetch(`${url}/auth/v1/admin/users`, { method: 'POST', headers: { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, email_confirm: true }) }))
-    await sql(ref, `insert into platform_admins(user_id) values('${u.id}')`)
-    const env = `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_ANON_KEY=${anon}\nSUPABASE_SERVICE_ROLE_KEY=${service}\n`
+    await sql(ref, `insert into owners(user_id) values('${u.id}')`)
+    const env = `NEXT_PUBLIC_SUPABASE_URL=${url}\nNEXT_PUBLIC_SUPABASE_ANON_KEY=${anon}\n`
     let saved = false
     try { fs.writeFileSync(path.join(process.cwd(), '.env.local'), env); saved = true } catch {}
     return NextResponse.json({ ok: true, saved, env: saved ? undefined : env })

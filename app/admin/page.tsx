@@ -1,19 +1,17 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { sb, TAGS } from '@/lib/supabase'
-import { useParams } from 'next/navigation'
 import { useShop } from '@/lib/shop'
 const NEXT: Record<string, string> = { placed: 'accepted', accepted: 'preparing', preparing: 'out_for_delivery', out_for_delivery: 'delivered' }
 const blank = { name: '', name_ur: '', description: '', price: '', unit: 'kg', tag: 'fresh', sale_price: '', available: true, image_url: '' }
 export default function Admin() {
-  const { slug } = useParams<{ slug: string }>()
   const [user, setUser] = useState<any>(null), [cr, setCr] = useState({ email: '', password: '' }), [err, setErr] = useState('')
   const [orders, setOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(blank), [sel, setSel] = useState<string[]>([])
-  const [shop, setShop] = useShop(slug), [saved, setSaved] = useState(false)
+  const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
   const [armed, setArmed] = useState(false), ctx = useRef<AudioContext | null>(null), beep = useRef<any>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
-  const load = async () => { setOrders((await sb.from('orders').select('*').eq('shop_id', shop.id).order('created_at', { ascending: false }).limit(50)).data || []); setItems((await sb.from('items').select('*').eq('shop_id', shop.id).order('created_at', { ascending: false })).data || []) }
-  useEffect(() => { if (!user || !shop.id) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${shop.id}` }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user, shop.id])
+  const load = async () => { setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(50)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
+  useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
   const pending = orders.some(o => o.status === 'placed')
   useEffect(() => {
     clearInterval(beep.current)
@@ -24,9 +22,9 @@ export default function Admin() {
   const login = async () => { const { data, error } = await sb.auth.signInWithPassword(cr); if (error) setErr(error.message); else setUser(data.user) }
   const setStatus = async (id: string, status: string) => { await sb.from('orders').update({ status }).eq('id', id); load() }
   const upload = async (file: File) => { const p = Date.now() + '-' + file.name.replace(/\W/g, ''); await sb.storage.from('items').upload(p, file); setForm({ ...form, image_url: sb.storage.from('items').getPublicUrl(p).data.publicUrl }) }
-  const save = async () => { const { id, created_at, ...row } = form; row.shop_id = shop.id; row.price = +row.price; row.sale_price = row.sale_price ? +row.sale_price : null; await (id ? sb.from('items').update(row).eq('id', id) : sb.from('items').insert(row)); setForm(blank); load() }
+  const save = async () => { const { id, created_at, ...row } = form; row.price = +row.price; row.sale_price = row.sale_price ? +row.sale_price : null; await (id ? sb.from('items').update(row).eq('id', id) : sb.from('items').insert(row)); setForm(blank); load() }
   const share = () => { const chosen = items.filter(i => sel.includes(i.id)); const text = chosen.map(i => `${i.name} – Rs ${i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price}/${i.unit}\n${location.origin}/item/${i.id}`).join('\n\n'); navigator.share ? navigator.share({ text }) : navigator.clipboard.writeText(text) }
-  const saveShop = async () => { await sb.from('shops').update({ name: shop.name, logo_url: shop.logo_url, color: shop.color, whatsapp: shop.whatsapp }).eq('id', shop.id); document.documentElement.style.setProperty('--brand', shop.color); setSaved(true) }
+  const saveShop = async () => { await sb.from('shop_settings').upsert({ id: 1, name: shop.name, logo_url: shop.logo_url, color: shop.color, whatsapp: shop.whatsapp }); document.documentElement.style.setProperty('--brand', shop.color); setSaved(true) }
   const uploadLogo = async (file: File) => { const p = 'logo-' + Date.now(); await sb.storage.from('items').upload(p, file); setShop({ ...shop, logo_url: sb.storage.from('items').getPublicUrl(p).data.publicUrl }); setSaved(false) }
   const inp = 'min-h-11 w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-base'
   if (!user) return (
