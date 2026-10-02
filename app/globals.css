@@ -35,3 +35,8 @@ button:active:not(:disabled) { opacity: 0.8; }
 @keyframes sheet { from { transform: translateY(100%); } }
 @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation: none !important; transition: none !important; } }
 :root { --brand-soft: color-mix(in srgb, var(--brand) 10%, white); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes pop { 50% { transform: scale(1.12); } }
+html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+button { -webkit-user-select: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

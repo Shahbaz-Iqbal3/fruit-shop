@@ -10,3 +10,5 @@ Owner > /admin > "Shop branding": name, logo, brand color, WhatsApp number. Exis
 
 ## Phone tracking
 Existing database: run `supabase/migrations/002_track_by_phone.sql` once. Customers track orders at `/track` with their phone number.
+
+Existing database: run `supabase/migrations/003_categories.sql` once (categories + faster lists).
