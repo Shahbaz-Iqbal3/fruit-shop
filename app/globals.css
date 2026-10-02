@@ -37,6 +37,8 @@ button:active:not(:disabled) { opacity: 0.8; }
 :root { --brand-soft: color-mix(in srgb, var(--brand) 10%, white); }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
 @keyframes pop { 50% { transform: scale(1.12); } }
+@keyframes whatsapp-attention { 0%, 88%, 100% { transform: scale(1); } 92% { transform: scale(1.08); } 96% { transform: scale(1); } }
+.whatsapp-attention { animation: whatsapp-attention 2.8s ease-in-out infinite; }
 html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
 button { -webkit-user-select: none; user-select: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

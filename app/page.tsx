@@ -16,7 +16,7 @@ export default function Shop() {
   const [cat, setCat] = useState('all'), [tag, setTag] = useState('all'), [sort, setSort] = useState('new'), [q, setQ] = useState(''), [dq, setDq] = useState('')
   const [cart, setCart] = useState<Record<string, { i: any; qty: number }>>({}), [open, setOpen] = useState(false)
   const [f, setF] = useState({ name: '', phone: '', address: '', note: '' }), [known, setKnown] = useState(false), [tried, setTried] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState('')
-  const io = useRef<IntersectionObserver | null>(null), moreRef = useRef<() => void>(() => {})
+  const io = useRef<IntersectionObserver | null>(null), moreRef = useRef<() => void>(() => {}), filterRail = useRef<HTMLDivElement | null>(null)
   useEffect(() => { try { const c = localStorage.getItem('cust'); if (c) { setF(JSON.parse(c)); setKnown(true) } } catch {} }, [])
   useEffect(() => { const t = setTimeout(() => setDq(q.trim().replace(/[,()%*]/g, '')), 300); return () => clearTimeout(t) }, [q])
   useEffect(() => {
@@ -25,6 +25,7 @@ export default function Shop() {
     const id = new URLSearchParams(location.search).get('item')
     if (id) sb.from('items').select('*').eq('id', id).eq('available', true).maybeSingle().then(x => setPinned(x.data))
   }, [r])
+  useEffect(() => { filterRail.current?.scrollTo({ left: 0 }) }, [cats])
   const fetchPage = useCallback(async (from: number) => {
     let qy = sb.from('items').select('*').eq('available', true)
     if (cat !== 'all') qy = qy.eq('category_id', cat)
@@ -88,18 +89,20 @@ export default function Shop() {
         <div className="flex items-center gap-4">
           {shop.logo_url ? <img src={shop.logo_url} alt="" className="h-12 w-12 rounded-2xl object-cover ring-2 ring-white/60" /> : <span className={disp + ' flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold'}>{shop.name[0]}</span>}
           <div className="min-w-0 flex-1"><p className="text-sm text-white/85">Fresh fruit, delivered to you</p><h1 className={disp + ' truncate text-2xl font-bold leading-tight sm:text-3xl'}>{shop.name}</h1></div>
-          {shop.whatsapp && <a href={waLink(shop.whatsapp, 'Hi, I have a question')} aria-label="Chat on WhatsApp" className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[var(--brand)] shadow"><Icon d={I.chat} /></a>}
+          {shop.whatsapp && <a href={waLink(shop.whatsapp, 'Hi, I have a question')} aria-label="Chat on WhatsApp" className="whatsapp-attention flex h-12 w-12 items-center justify-center rounded-full bg-white text-[var(--brand)] shadow"><svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" /></svg></a>}
         </div>
         <ul className={rail + ' mt-3 text-sm font-medium sm:mt-4'}>{['Cash on delivery', 'Live order tracking', 'Picked fresh daily'].map(t => <li key={t} className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Icon d={I.check} className="h-4 w-4" />{t}</li>)}</ul>
       </section>
-      <div className="sticky top-0 z-10 space-y-2 bg-[#fbf8f3]/95 px-3 backdrop-blur sm:px-4 mt-2 md:top-16">
+      <div className="sticky top-0 z-10 bg-[#fbf8f3]/95 px-3 backdrop-blur sm:px-4 mt-2 md:top-16 space-y-2">
         <label className="relative block"><span className="sr-only">Search fruit</span><Icon d={I.search} className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search fruit" className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-3 text-base shadow-sm sm:min-h-12" /></label>
-        {cats.length > 0 && <div className={rail} role="group" aria-label="Categories">{[{ id: 'all', name: 'All' }, ...cats].map(c => <button key={c.id} aria-pressed={cat === c.id} onClick={() => setCat(c.id)} className={chip(cat === c.id)}>{c.name}</button>)}</div>}
+        <div ref={filterRail} className="flex items-center gap-2 overflow-x-auto whitespace-nowrap snap-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-1">
+          {cats.length > 0 && <div className="flex shrink-0 gap-2" role="group" aria-label="Categories">{cats.map(c => <button key={c.id} aria-pressed={cat === c.id} onClick={() => setCat(cat === c.id ? 'all' : c.id)} className={chip(cat === c.id)}>{c.name}</button>)}</div>}
+          <div className="flex shrink-0 gap-2" role="group" aria-label="Status filters">{[['fresh', 'Fresh'], ['on_sale', 'On sale'], ['one_day_old', '1 day old']].map(([k, l]) => <button key={k} aria-pressed={tag === k} onClick={() => setTag(tag === k ? 'all' : k)} className={chip(tag === k)}>{l}</button>)}</div>
+          <div className="flex shrink-0 gap-2" role="group" aria-label="Sort products">{[['new', 'Newest'], ['low', 'Price: low'], ['high', 'Price: high']].map(([k, l]) => <button key={k} aria-pressed={sort === k} onClick={() => setSort(k)} className={chip(sort === k)}>{l}</button>)}</div>
+        </div>
       </div>
       <main className="space-y-1 px-3 pt-1 sm:px-4">
         {pinned && <section className="rounded-3xl bg-[var(--brand-soft)] p-4"><p className="mb-3 font-bold">Shared with you</p><ul className={grid}>{tile(pinned, 0)}</ul></section>}
-        <div className="flex items-center gap-2"><div className={rail + ' flex-1'} role="group" aria-label="Filter">{[['all', 'All'], ['fresh', 'Fresh'], ['on_sale', 'On sale'], ['one_day_old', '1 day old']].map(([k, l]) => <button key={k} aria-pressed={tag === k} onClick={() => setTag(k)} className={chip(tag === k)}>{l}</button>)}</div>
-          <label className="shrink-0"><span className="sr-only">Sort</span><select value={sort} onChange={e => setSort(e.target.value)} className="min-h-8 rounded-full border border-stone-300 bg-white px-2 text-sm font-semibold"><option value="new">Newest</option><option value="low">Price: low</option><option value="high">Price: high</option></select></label></div>
         <ul className={grid}>
           {items === null && Array.from({ length: 10 }, (_, n) => <li key={n}><div className="aspect-square animate-pulse rounded-2xl bg-stone-200" /><div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-stone-200" /><div className="mt-1.5 h-4 w-full animate-pulse rounded bg-stone-200" /></li>)}
           {items?.map(tile)}

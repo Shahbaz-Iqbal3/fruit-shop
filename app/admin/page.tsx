@@ -4,6 +4,7 @@ import { sb, TAGS } from '@/lib/supabase'
 import { useShop } from '@/lib/shop'
 import { Icon, I } from '@/lib/icons'
 import Camera from '@/lib/camera'
+import Reports from './reports'
 const NEXT: Record<string, string> = { placed: 'accepted', accepted: 'preparing', preparing: 'out_for_delivery', out_for_delivery: 'delivered' }
 const ACT: Record<string, string> = { placed: 'Accept order', accepted: 'Start preparing', preparing: 'Out for delivery', out_for_delivery: 'Mark delivered' }
 const LBL: Record<string, string> = { placed: 'New', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' }
@@ -15,24 +16,42 @@ const card = 'rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200'
 const disp = 'font-[family-name:var(--font-display)]'
 export default function Admin() {
   const [user, setUser] = useState<any>(null), [cr, setCr] = useState({ email: '', password: '' }), [err, setErr] = useState('')
-  const [tab, setTab] = useState<'orders' | 'items' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
-  const [orders, setOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
+  const [tab, setTab] = useState<'orders' | 'items' | 'reports' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
+  const [orders, setOrders] = useState<any[]>([]), [reportOrders, setReportOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
   const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), io = useRef<IntersectionObserver | null>(null)
   useEffect(() => { setShown(20); setOShown(15) }, [q, cf, af, tab, view])
-  const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
+  const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), [repeatAlarm, setRepeatAlarm] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
-  const load = async () => { setCats((await sb.from('categories').select('*').order('sort').order('created_at')).data || []); setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
+  useEffect(() => { try { setRepeatAlarm(localStorage.getItem('repeatAlarm') === 'true') } catch {} }, [])
+  const load = async () => {
+    const [catResult, orderResult, itemResult] = await Promise.all([
+      sb.from('categories').select('*').order('sort').order('created_at'),
+      sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100),
+      sb.from('items').select('*').order('created_at', { ascending: false }),
+    ])
+    setCats(catResult.data || [])
+    setOrders(orderResult.data || [])
+    setItems(itemResult.data || [])
+    const allOrders: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data } = await sb.from('orders').select('*').order('created_at', { ascending: false }).range(from, from + 999)
+      allOrders.push(...(data || []))
+      if (!data || data.length < 1000) break
+    }
+    setReportOrders(allOrders)
+  }
   useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
   const fresh = orders.filter(o => o.status === 'placed').length
   useEffect(() => {
     if (armed && fresh > 0) {
       const a = audio.current = new Audio('/alarm.wav')
       a.volume = 0.9
+      a.loop = repeatAlarm
       a.play().catch(() => {})
     }
     return () => { if (audio.current) { audio.current.pause(); audio.current = null } }
-  }, [armed, fresh])
+  }, [armed, fresh, repeatAlarm])
   const arm = () => { (navigator as any).wakeLock?.request('screen').catch(() => {}); setArmed(true) }
   const login = async () => { const { data, error } = await sb.auth.signInWithPassword(cr); if (error) setErr(error.message); else setUser(data.user) }
   const setStatus = async (id: string, status: string) => { await sb.from('orders').update({ status }).eq('id', id); load() }
@@ -63,7 +82,7 @@ export default function Admin() {
     </main>)
   const vis = items.filter(i => (cf === 'all' || (cf === 'none' ? !i.category_id : i.category_id === cf)) && (af === 'all' || (af === 'on') === i.available) && (i.name + (i.name_ur || '')).toLowerCase().includes(q.toLowerCase()))
   const list = orders.filter(o => (view === 'active') === !['delivered', 'cancelled'].includes(o.status))
-  const tabs = [['orders', 'Orders', I.orders], ['items', 'Fruit', I.bag], ['brand', 'Shop', I.brand]] as const
+  const tabs = [['orders', 'Orders', I.orders], ['items', 'Fruit', I.bag], ['reports', 'Reports', I.chart], ['brand', 'Shop', I.brand]] as const
   return (
     <div className="mx-auto w-full max-w-3xl pb-32 lg:max-w-5xl lg:pb-10 lg:pl-56">
       <header className="sticky top-0 z-10 flex items-center gap-3 bg-[#fbf8f3]/95 px-4 py-3 backdrop-blur">
@@ -101,6 +120,7 @@ export default function Admin() {
           {vis.length > shown && <div ref={sentinel(setShown)} key={shown} className="h-8" />}
           {vis.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>{items.length ? 'No fruit matches these filters.' : 'No fruit yet. Tap Add to create your first item.'}</p>}
         </>}
+        {tab === 'reports' && <Reports orders={reportOrders} items={items} categories={cats} />}
         {tab === 'brand' && <section className={card + ' space-y-4'}>
           <h2 className={disp + ' text-2xl font-bold'}>Shop look</h2>
           <div className="flex items-center gap-3 rounded-2xl p-4 text-white" style={{ background: shop.color }}>{shop.logo_url ? <img src={shop.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-xl font-bold">{shop.name[0]}</span>}<p className={disp + ' text-2xl font-bold'}>{shop.name}</p></div>
@@ -108,9 +128,10 @@ export default function Admin() {
           {lab('WhatsApp number', <input className={inp} inputMode="tel" placeholder="03xx xxxxxxx" value={shop.whatsapp || ''} onChange={e => { setShop({ ...shop, whatsapp: e.target.value }); setSaved(false) }} />)}
           {lab('Brand color', <input type="color" className="mt-1 block h-12 w-24 rounded-xl" value={shop.color} onChange={e => { setShop({ ...shop, color: e.target.value }); setSaved(false) }} />)}
           {lab('Logo', <input type="file" accept="image/*" className="mt-1 block" onChange={e => e.target.files?.[0] && upload(e.target.files[0], url => { setShop({ ...shop, logo_url: url }); setSaved(false) })} />)}
-          <button onClick={saveShop} className="min-h-14 w-full rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">{saved ? 'Saved ✓' : 'Save changes'}</button>
-          <button onClick={async () => { await sb.auth.signOut(); setUser(null) }} className="min-h-12 w-full rounded-2xl bg-stone-100 font-semibold">Log out</button>
-        </section>}
+           <button onClick={saveShop} className="min-h-14 w-full rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">{saved ? 'Saved ✓' : 'Save changes'}</button>
+           <button onClick={async () => { await sb.auth.signOut(); setUser(null) }} className="min-h-12 w-full rounded-2xl bg-stone-100 font-semibold">Log out</button>
+          <div className="flex min-h-14 items-center justify-between gap-4 border-t border-stone-200 pt-4 font-semibold"><span id="repeat-alarm-label"><span className="block">Repeat new-order alarm</span><span className="text-sm font-normal text-stone-600">Keep ringing until you handle the new order</span></span><button type="button" role="switch" aria-checked={repeatAlarm} aria-labelledby="repeat-alarm-label" onClick={() => { const next = !repeatAlarm; setRepeatAlarm(next); try { localStorage.setItem('repeatAlarm', String(next)) } catch {} }} className={'flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ' + (repeatAlarm ? 'bg-[var(--brand)]' : 'bg-stone-300')}><span className={'h-6 w-6 rounded-full bg-white shadow transition-transform ' + (repeatAlarm ? 'translate-x-6' : '')} /></button></div>
+         </section>}
       </main>
       {tab === 'items' && sel.length > 0 && <button onClick={share} className="fixed inset-x-4 bottom-24 mx-auto flex min-h-14 max-w-md items-center justify-center gap-2 rounded-2xl bg-green-700 text-lg font-bold text-white shadow-xl"><Icon d={I.share} />Share {sel.length} {sel.length === 1 ? 'item' : 'items'}</button>}
       <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:inset-y-0 lg:right-auto lg:w-56 lg:border-r lg:border-t-0 lg:pt-6"><ul className="mx-auto flex max-w-3xl lg:max-w-none lg:flex-col lg:gap-1 lg:px-3">{tabs.map(([k, l, d]) => <li key={k} className="flex-1"><button aria-current={tab === k} onClick={() => setTab(k)} className={'relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base ' + (tab === k ? 'text-[var(--brand)]' : 'text-stone-600')}><Icon d={d} className="h-6 w-6" />{l}{k === 'orders' && fresh > 0 && <span className="absolute right-[28%] top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-700 px-1 text-xs text-white">{fresh}</span>}</button></li>)}<li className="flex-1"><a href="/" className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold text-stone-600 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base"><Icon d={I.cart} className="h-6 w-6" />View shop</a></li></ul></nav>
