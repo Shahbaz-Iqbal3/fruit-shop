@@ -20,10 +20,10 @@ export default function Admin() {
   const [tab, setTab] = useState<'orders' | 'items' | 'reports' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
   const [orders, setOrders] = useState<any[]>([]), [reportOrders, setReportOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
-  const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), [shopTab, setShopTab] = useState<'look' | 'notify'>('look'), io = useRef<IntersectionObserver | null>(null)
+  const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), [shopTab, setShopTab] = useState<'look' | 'notify'>('look'), [checking, setChecking] = useState(true), [loaded, setLoaded] = useState(false), io = useRef<IntersectionObserver | null>(null)
   useEffect(() => { setShown(20); setOShown(15) }, [q, cf, af, tab, view])
   const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), [repeatAlarm, setRepeatAlarm] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
-  useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
+  useEffect(() => { sb.auth.getSession().then(x => { setUser(x.data.session?.user ?? null); setChecking(false) }) }, [])
   useEffect(() => { try { setRepeatAlarm(localStorage.getItem('repeatAlarm') === 'true') } catch {} }, [])
   const load = async () => {
     const [catResult, orderResult, itemResult] = await Promise.all([
@@ -42,7 +42,7 @@ export default function Admin() {
     }
     setReportOrders(allOrders)
   }
-  useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
+  useEffect(() => { if (!user) return; load().finally(() => setLoaded(true)); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
   const fresh = orders.filter(o => o.status === 'placed').length
   useEffect(() => {
     if (armed && fresh > 0) {
@@ -72,6 +72,12 @@ export default function Admin() {
     if (navigator.share) navigator.share({ text }).catch(() => {}); else navigator.clipboard.writeText(text)
   }
   const lab = (t: string, n: React.ReactNode) => <label className="block text-sm font-semibold text-stone-700">{t}{n}</label>
+  if (checking || (user && !loaded)) return (
+    <main role="status" aria-live="polite" className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#fbf8f3]">
+      <img src="/icon-192.png" alt="" className="h-20 w-20 rounded-3xl shadow-lg" />
+      <span className="h-7 w-7 animate-spin rounded-full border-4 border-stone-300 border-t-[var(--brand)]" />
+      <p className="text-stone-600">Loading your shop…</p>
+    </main>)
   if (!user) return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-4 p-6">
       <h1 className={disp + ' text-3xl font-bold'}>Owner login</h1>
