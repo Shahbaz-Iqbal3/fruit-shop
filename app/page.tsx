@@ -58,7 +58,7 @@ export default function Shop() {
           {shown.map(i => (
             <li key={i.id} id={'i-' + i.id} className={'scroll-mt-44 flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm ' + (cart[i.id] ? 'ring-2 ring-[var(--brand)]' : 'ring-1 ring-stone-200')}>
               <div className="relative aspect-square bg-stone-100">
-                <a href={'/item/' + i.id} aria-label={'Details of ' + i.name}>{i.image_url && <img src={i.image_url} alt={i.name} loading="lazy" className="h-full w-full object-cover" />}</a>
+                {i.image_url && <img src={i.image_url} alt={i.name} loading="lazy" className="h-full w-full object-cover" />}
                 <span className={'absolute left-2.5 top-2.5 rounded-full px-2.5 py-1 text-xs font-bold ' + TAG_STYLE[i.tag]}>{i.tag === 'on_sale' && i.sale_price ? `${Math.round((1 - i.sale_price / i.price) * 100)}% off` : TAGS[i.tag]}</span>
                 {!cart[i.id] && <button aria-label={'Add ' + i.name} onClick={() => add(i.id, 1)} className="absolute bottom-2.5 right-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-lg"><Icon d={I.plus} className="h-6 w-6" /></button>}
               </div>
