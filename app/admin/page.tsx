@@ -18,9 +18,11 @@ export default function Admin() {
   const [tab, setTab] = useState<'orders' | 'items' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
   const [orders, setOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
+  const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), io = useRef<IntersectionObserver | null>(null)
+  useEffect(() => { setShown(20); setOShown(15) }, [q, cf, af, tab, view])
   const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
-  const load = async () => { setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
+  const load = async () => { setCats((await sb.from('categories').select('*').order('sort').order('created_at')).data || []); setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
   useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
   const fresh = orders.filter(o => o.status === 'placed').length
   useEffect(() => {
@@ -35,11 +37,17 @@ export default function Admin() {
   const login = async () => { const { data, error } = await sb.auth.signInWithPassword(cr); if (error) setErr(error.message); else setUser(data.user) }
   const setStatus = async (id: string, status: string) => { await sb.from('orders').update({ status }).eq('id', id); load() }
   const upload = async (file: File, cb: (url: string) => void) => { const p = Date.now() + '-' + file.name.replace(/\W/g, ''); setUpBusy(true); await sb.storage.from('items').upload(p, file); setUpBusy(false); cb(sb.storage.from('items').getPublicUrl(p).data.publicUrl) }
-  const save = async () => { setTried(true); if (!form.name.trim() || !(+form.price > 0)) return; const { id, created_at, ...row } = form; row.price = +row.price; row.sale_price = row.sale_price ? +row.sale_price : null; await (id ? sb.from('items').update(row).eq('id', id) : sb.from('items').insert(row)); setForm(null); load() }
+  const save = async () => { setTried(true); if (!form.name.trim() || !(+form.price > 0)) return; const { id, created_at, ...row } = form; row.category_id = row.category_id || null; row.price = +row.price; row.sale_price = row.sale_price ? +row.sale_price : null; await (id ? sb.from('items').update(row).eq('id', id) : sb.from('items').insert(row)); setForm(null); load() }
   const toggle = async (i: any) => { await sb.from('items').update({ available: !i.available }).eq('id', i.id); load() }
+  const remove = async (i: any) => { if (!confirm(`Delete ${i.name}? This cannot be undone.`)) return; await sb.from('items').delete().eq('id', i.id); setForm(null); setSel(s => s.filter(x => x !== i.id)); load() }
+  const addCat = async () => { const n = newCat.trim(); if (!n) return; await sb.from('categories').insert({ name: n, sort: (cats.at(-1)?.sort ?? -1) + 1 }); setNewCat(''); load() }
+  const renameCat = async (c: any, name: string) => { if (name.trim() && name.trim() !== c.name) { await sb.from('categories').update({ name: name.trim() }).eq('id', c.id); load() } }
+  const moveCat = async (idx: number, d: number) => { const a = cats[idx], b = cats[idx + d]; if (!b) return; await Promise.all([sb.from('categories').update({ sort: b.sort }).eq('id', a.id), sb.from('categories').update({ sort: a.sort }).eq('id', b.id)]); load() }
+  const delCat = async (c: any) => { if (!confirm(`Delete category "${c.name}"? Its fruit will become uncategorized.`)) return; await sb.from('categories').delete().eq('id', c.id); if (cf === c.id) setCf('all'); load() }
+  const sentinel = (set: (f: (n: number) => number) => void) => (el: HTMLDivElement | null) => { io.current?.disconnect(); if (!el) return; io.current = new IntersectionObserver(e => e[0].isIntersecting && set(n => n + 15), { rootMargin: '500px' }); io.current.observe(el) }
   const saveShop = async () => { await sb.from('shop_settings').upsert({ id: 1, name: shop.name, logo_url: shop.logo_url, color: shop.color, whatsapp: shop.whatsapp }); document.documentElement.style.setProperty('--brand', shop.color); setSaved(true) }
   const share = async () => {
-    const chosen = items.filter(i => sel.includes(i.id)), text = chosen.map(i => `${i.name} – Rs ${i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price}/${i.unit}\n${location.origin}/#i-${i.id}`).join('\n\n')
+    const chosen = items.filter(i => sel.includes(i.id)), text = chosen.map(i => `${i.name} – Rs ${i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price}/${i.unit}\n${location.origin}/?item=${i.id}`).join('\n\n')
     try { const files = await Promise.all(chosen.filter(i => i.image_url).slice(0, 5).map(async i => { const b = await (await fetch(i.image_url)).blob(); return new File([b], i.name + '.jpg', { type: b.type }) })); if (files.length && navigator.canShare?.({ files })) { await navigator.share({ files, text }); return } } catch {}
     if (navigator.share) navigator.share({ text }).catch(() => {}); else navigator.clipboard.writeText(text)
   }
@@ -53,6 +61,7 @@ export default function Admin() {
       {err && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{err}</p>}
       <button onClick={login} className="min-h-14 rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">Log in</button>
     </main>)
+  const vis = items.filter(i => (cf === 'all' || (cf === 'none' ? !i.category_id : i.category_id === cf)) && (af === 'all' || (af === 'on') === i.available) && (i.name + (i.name_ur || '')).toLowerCase().includes(q.toLowerCase()))
   const list = orders.filter(o => (view === 'active') === !['delivered', 'cancelled'].includes(o.status))
   const tabs = [['orders', 'Orders', I.orders], ['items', 'Fruit', I.bag], ['brand', 'Shop', I.brand]] as const
   return (
@@ -66,7 +75,7 @@ export default function Admin() {
         {tab === 'orders' && <>
           {!armed && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Tap “Start taking orders” so new orders ring loudly. Keep this page open.</p>}
           <div className="flex gap-2">{(['active', 'done'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={'min-h-11 rounded-full px-5 text-sm font-semibold ring-1 ' + (view === v ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white ring-stone-300')}>{v === 'active' ? 'Active' : 'History'}</button>)}</div>
-          {list.map(o => (
+          {list.slice(0, oShown).map(o => (
             <section key={o.id} className={card + (o.status === 'placed' ? ' ring-2 ring-[var(--brand)]' : '')}>
               <div className="flex items-center justify-between"><span className={'rounded-full px-3 py-1 text-sm font-bold ' + PILL[o.status]}>{LBL[o.status]}</span><span className="text-sm text-stone-600">{ago(o.created_at)}</span></div>
               <div className="mt-3 flex items-start justify-between gap-3"><div><p className="text-lg font-bold">{o.customer_name}</p><p className="text-stone-700">{o.address}</p>{o.note && <p className="text-sm text-stone-600">Note: {o.note}</p>}</div><a href={'tel:' + o.phone} aria-label={'Call ' + o.customer_name} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-700 text-white"><Icon d={I.phone} /></a></div>
@@ -74,19 +83,25 @@ export default function Admin() {
               <p className="mt-2 flex justify-between text-lg font-bold"><span>Total · Cash</span><span>Rs {o.total}</span></p>
               {NEXT[o.status] && <div className="mt-3 flex gap-2"><button onClick={() => setStatus(o.id, NEXT[o.status])} className="min-h-14 flex-1 rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">{ACT[o.status]}</button><button onClick={() => confirm('Cancel this order?') && setStatus(o.id, 'cancelled')} className="min-h-14 rounded-2xl bg-stone-100 px-4 font-semibold">Cancel</button></div>}
             </section>))}
+          {list.length > oShown && <div ref={sentinel(setOShown)} key={oShown} className="h-8" />}
           {list.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>{view === 'active' ? 'No active orders. New ones will appear here.' : 'No past orders yet.'}</p>}
         </>}
         {tab === 'items' && <>
-          <div className="flex items-center justify-between"><h2 className={disp + ' text-2xl font-bold'}>Your fruit</h2><button onClick={() => { setTried(false); setForm(blank) }} className="flex min-h-12 items-center gap-2 rounded-full bg-[var(--brand)] px-5 font-bold text-white"><Icon d={I.plus} />Add</button></div>
-          {items.map(i => (
+          <div className="flex items-center justify-between"><h2 className={disp + ' text-2xl font-bold'}>Your fruit <span className="text-base font-normal text-stone-600">({vis.length})</span></h2><button onClick={() => { setTried(false); setForm(blank) }} className="flex min-h-12 items-center gap-2 rounded-full bg-[var(--brand)] px-5 font-bold text-white"><Icon d={I.plus} />Add</button></div>
+          <input type="search" aria-label="Search fruit" placeholder="Search fruit" value={q} onChange={e => setQ(e.target.value)} className={inp + ' !mt-0'} />
+          <div className="flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{[{ id: 'all', name: 'All' }, ...cats, { id: 'none', name: 'No category' }].map(c => <button key={c.id} aria-pressed={cf === c.id} onClick={() => setCf(c.id)} className={'min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ring-1 ' + (cf === c.id ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white ring-stone-300')}>{c.name}</button>)}<button onClick={() => setCatSheet(true)} className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-[var(--brand-soft)] px-4 text-sm font-bold text-[var(--brand)]"><Icon d={I.edit} className="h-4 w-4" />Categories</button></div>
+          <div className="flex gap-2">{[['all', 'Any'], ['on', 'Available'], ['off', 'Hidden']].map(([k, l]) => <button key={k} aria-pressed={af === k} onClick={() => setAf(k)} className={'min-h-11 rounded-full px-4 text-sm font-semibold ring-1 ' + (af === k ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white ring-stone-300')}>{l}</button>)}</div>
+          {vis.slice(0, shown).map(i => (
             <section key={i.id} className={card + ' flex items-center gap-3 !p-3'}>
               <input type="checkbox" aria-label={'Select ' + i.name} className="h-6 w-6 shrink-0" checked={sel.includes(i.id)} onChange={() => setSel(s => s.includes(i.id) ? s.filter(x => x !== i.id) : [...s, i.id])} />
               {i.image_url ? <img src={i.image_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" /> : <span className="h-16 w-16 shrink-0 rounded-xl bg-stone-100" />}
               <div className="min-w-0 flex-1"><p className="truncate font-bold">{i.name}</p><p className="text-sm text-stone-700">Rs {i.price} / {i.unit} · {TAGS[i.tag]}</p><p className={'text-sm font-semibold ' + (i.available ? 'text-green-800' : 'text-stone-600')}>{i.available ? 'Available today' : 'Hidden'}</p></div>
               <button role="switch" aria-checked={i.available} aria-label={'Available: ' + i.name} onClick={() => toggle(i)} className="flex min-h-11 min-w-14 items-center justify-center"><span className={'flex h-8 w-14 items-center rounded-full p-1 transition-colors ' + (i.available ? 'bg-green-700' : 'bg-stone-300')}><span className={'h-6 w-6 rounded-full bg-white shadow transition-transform ' + (i.available ? 'translate-x-6' : '')} /></span></button>
               <button aria-label={'Edit ' + i.name} onClick={() => { setTried(false); setForm(i) }} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100"><Icon d={I.edit} /></button>
+              <button aria-label={'Delete ' + i.name} onClick={() => remove(i)} className="hidden h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-700 sm:flex"><Icon d={I.trash} /></button>
             </section>))}
-          {items.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>No fruit yet. Tap Add to create your first item.</p>}
+          {vis.length > shown && <div ref={sentinel(setShown)} key={shown} className="h-8" />}
+          {vis.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>{items.length ? 'No fruit matches these filters.' : 'No fruit yet. Tap Add to create your first item.'}</p>}
         </>}
         {tab === 'brand' && <section className={card + ' space-y-4'}>
           <h2 className={disp + ' text-2xl font-bold'}>Shop look</h2>
@@ -101,6 +116,15 @@ export default function Admin() {
       </main>
       {tab === 'items' && sel.length > 0 && <button onClick={share} className="fixed inset-x-4 bottom-24 mx-auto flex min-h-14 max-w-md items-center justify-center gap-2 rounded-2xl bg-green-700 text-lg font-bold text-white shadow-xl"><Icon d={I.share} />Share {sel.length} {sel.length === 1 ? 'item' : 'items'}</button>}
       <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:inset-y-0 lg:right-auto lg:w-56 lg:border-r lg:border-t-0 lg:pt-6"><ul className="mx-auto flex max-w-3xl lg:max-w-none lg:flex-col lg:gap-1 lg:px-3">{tabs.map(([k, l, d]) => <li key={k} className="flex-1"><button aria-current={tab === k} onClick={() => setTab(k)} className={'relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base ' + (tab === k ? 'text-[var(--brand)]' : 'text-stone-600')}><Icon d={d} className="h-6 w-6" />{l}{k === 'orders' && fresh > 0 && <span className="absolute right-[28%] top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-700 px-1 text-xs text-white">{fresh}</span>}</button></li>)}<li className="flex-1"><a href="/" className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold text-stone-600 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base"><Icon d={I.cart} className="h-6 w-6" />View shop</a></li></ul></nav>
+      {catSheet && (
+        <div className="fixed inset-0 z-20 flex items-end bg-black/50 md:items-center" onClick={() => setCatSheet(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Categories" onClick={e => e.stopPropagation()} style={{ animation: 'sheet 250ms ease-out' }} className="mx-auto max-h-[92vh] w-full max-w-lg space-y-3 overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:rounded-3xl">
+            <div className="flex items-center justify-between"><h2 className={disp + ' text-2xl font-bold'}>Categories</h2><button aria-label="Close" onClick={() => setCatSheet(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100"><Icon d={I.x} /></button></div>
+            <div className="flex gap-2"><input className={inp + ' !mt-0 flex-1'} aria-label="New category name" placeholder="New category, e.g. Seasonal" value={newCat} onChange={e => setNewCat(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCat()} /><button onClick={addCat} className="min-h-12 rounded-xl bg-[var(--brand)] px-5 font-bold text-white">Add</button></div>
+            {cats.map((c, n) => <div key={c.id} className="flex items-center gap-1.5"><input aria-label="Category name" defaultValue={c.name} onBlur={e => renameCat(c, e.target.value)} className={inp + ' !mt-0 flex-1'} /><button aria-label="Move up" disabled={n === 0} onClick={() => moveCat(n, -1)} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 disabled:opacity-30"><Icon d={I.up} /></button><button aria-label="Move down" disabled={n === cats.length - 1} onClick={() => moveCat(n, 1)} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 disabled:opacity-30"><Icon d={I.down} /></button><button aria-label={'Delete ' + c.name} onClick={() => delCat(c)} className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-700"><Icon d={I.trash} /></button></div>)}
+            {cats.length === 0 && <p className="py-4 text-center text-stone-600">No categories yet. Add one above.</p>}
+          </div>
+        </div>)}
       {cam && <Camera onCapture={f => { setCam(false); upload(f, url => setForm({ ...form, image_url: url })) }} onClose={() => setCam(false)} />}
       {form && (
         <div className="fixed inset-0 z-20 flex items-end bg-black/50 md:items-center" onClick={() => setForm(null)}>
@@ -111,6 +135,7 @@ export default function Admin() {
             {lab('Description', <textarea className={inp + ' py-2'} rows={3} value={form.description || ''} onChange={e => setForm({ ...form, description: e.target.value })} />)}
             <div className="grid grid-cols-2 gap-3">{lab('Price (Rs)', <><input className={inp} type="number" inputMode="decimal" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />{tried && !(+form.price > 0) && <span role="alert" className="mt-1 block text-sm font-normal text-red-700">Enter a price above 0</span>}</>)}{lab('Sold per', <select className={inp} value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}>{['kg', 'dozen', 'piece'].map(u => <option key={u}>{u}</option>)}</select>)}</div>
             <div className="grid grid-cols-2 gap-3">{lab('Status', <select className={inp} value={form.tag} onChange={e => setForm({ ...form, tag: e.target.value })}>{Object.entries(TAGS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>)}{form.tag === 'on_sale' && lab('Sale price (Rs)', <input className={inp} type="number" inputMode="decimal" value={form.sale_price || ''} onChange={e => setForm({ ...form, sale_price: e.target.value })} />)}</div>
+            {lab('Category', <select className={inp} value={form.category_id || ''} onChange={e => setForm({ ...form, category_id: e.target.value })}><option value="">No category</option>{cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>)}
             <div className="space-y-2"><p className="text-sm font-semibold text-stone-700">Photo</p>
               <div className="flex items-center gap-3">{form.image_url ? <img src={form.image_url} alt="Preview" className="h-24 w-24 rounded-2xl object-cover" /> : <span className="flex h-24 w-24 items-center justify-center rounded-2xl bg-stone-100 text-stone-500"><Icon d={I.camera} className="h-8 w-8" /></span>}
                 <div className="flex flex-1 flex-col gap-2"><button type="button" onClick={() => setCam(true)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-stone-900 font-semibold text-white"><Icon d={I.camera} className="h-5 w-5" />{form.image_url ? 'Retake with camera' : 'Take photo'}</button>
@@ -118,6 +143,7 @@ export default function Admin() {
               {upBusy && <p className="text-sm text-stone-600" aria-live="polite">Uploading photo…</p>}</div>
             <label className="flex min-h-11 items-center gap-3 font-semibold"><input type="checkbox" className="h-6 w-6" checked={form.available} onChange={e => setForm({ ...form, available: e.target.checked })} />Available today</label>
             <button onClick={save} className="min-h-14 w-full rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">Save fruit</button>
+            {form.id && <button onClick={() => remove(form)} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 font-semibold text-red-700"><Icon d={I.trash} className="h-5 w-5" />Delete this fruit</button>}
           </div>
         </div>)}
     </div>)
