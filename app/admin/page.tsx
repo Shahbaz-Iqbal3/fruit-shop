@@ -17,17 +17,20 @@ export default function Admin() {
   const [tab, setTab] = useState<'orders' | 'items' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
   const [orders, setOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
-  const [armed, setArmed] = useState(false), ctx = useRef<AudioContext | null>(null), beep = useRef<any>(null)
+  const [armed, setArmed] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
   const load = async () => { setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
   useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
   const fresh = orders.filter(o => o.status === 'placed').length
   useEffect(() => {
-    clearInterval(beep.current)
-    if (armed && fresh) { const ring = () => { const c = ctx.current!, o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.6; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.4) }; ring(); beep.current = setInterval(ring, 800) }
-    return () => clearInterval(beep.current)
+    if (armed && fresh > 0) {
+      const a = audio.current = new Audio('/alarm.mp3')
+      a.volume = 0.9
+      a.play().catch(() => {})
+    }
+    return () => { if (audio.current) { audio.current.pause(); audio.current = null } }
   }, [armed, fresh])
-  const arm = () => { ctx.current = new AudioContext(); (navigator as any).wakeLock?.request('screen').catch(() => {}); setArmed(true) }
+  const arm = () => { (navigator as any).wakeLock?.request('screen').catch(() => {}); setArmed(true) }
   const login = async () => { const { data, error } = await sb.auth.signInWithPassword(cr); if (error) setErr(error.message); else setUser(data.user) }
   const setStatus = async (id: string, status: string) => { await sb.from('orders').update({ status }).eq('id', id); load() }
   const upload = async (file: File, cb: (url: string) => void) => { const p = Date.now() + '-' + file.name.replace(/\W/g, ''); await sb.storage.from('items').upload(p, file); cb(sb.storage.from('items').getPublicUrl(p).data.publicUrl) }
