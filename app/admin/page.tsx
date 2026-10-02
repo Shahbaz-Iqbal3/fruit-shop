@@ -25,7 +25,7 @@ export default function Admin() {
   const fresh = orders.filter(o => o.status === 'placed').length
   useEffect(() => {
     if (armed && fresh > 0) {
-      const a = audio.current = new Audio('/alarm.mp3')
+      const a = audio.current = new Audio('/alarm.wav')
       a.volume = 0.9
       a.play().catch(() => {})
     }
