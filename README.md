@@ -12,3 +12,14 @@ Owner > /admin > "Shop branding": name, logo, brand color, WhatsApp number. Exis
 Existing database: run `supabase/migrations/002_track_by_phone.sql` once. Customers track orders at `/track` with their phone number.
 
 Existing database: run `supabase/migrations/003_categories.sql` once (categories + faster lists).
+
+## Phone notifications (new order alerts)
+New project: `/setup` does everything below automatically (if the function deploy fails, deploy it by hand in step 3).
+Existing project:
+1. Run `supabase/migrations/005_push_notifications.sql` in the SQL editor.
+2. Make keys: `npx web-push generate-vapid-keys`.
+3. Supabase > Edge Functions > deploy new function `notify-order`, paste `supabase/functions/notify-order/index.ts`, turn **Verify JWT off**.
+4. Edge Functions > Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:you@example.com`).
+5. SQL editor: `insert into app_config(key,value) values('notify_url','https://YOUR-REF.supabase.co/functions/v1/notify-order') on conflict (key) do update set value = excluded.value;`
+6. Add `NEXT_PUBLIC_VAPID_PUBLIC_KEY=<public key>` to `.env.local` and Vercel, then redeploy.
+7. On the owner phone open `/admin` (https), iPhone: Share > Add to Home Screen, then Shop > Notifications > turn on.

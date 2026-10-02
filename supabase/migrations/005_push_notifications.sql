@@ -1,0 +1,10 @@
+create extension if not exists pg_net;
+create table if not exists app_config(key text primary key, value text);
+alter table app_config enable row level security;
+alter table orders add column if not exists notified_at timestamptz;
+create table if not exists push_subs(id uuid primary key default gen_random_uuid(), user_id uuid not null default auth.uid(), endpoint text unique not null, p256dh text not null, auth text not null, label text, enabled boolean not null default true, show_details boolean not null default true, created_at timestamptz default now(), last_seen timestamptz default now());
+alter table push_subs enable row level security;
+create policy "own devices" on push_subs for all using (is_owner() and user_id = auth.uid()) with check (is_owner() and user_id = auth.uid());
+create or replace function notify_new_order() returns trigger language plpgsql security definer as $$ declare u text; begin select value into u from app_config where key = 'notify_url'; if u is not null then perform net.http_post(url := u, headers := '{"Content-Type":"application/json"}'::jsonb, body := jsonb_build_object('order_id', new.id)); end if; return new; end $$;
+drop trigger if exists on_order_notify on orders;
+create trigger on_order_notify after insert on orders for each row execute function notify_new_order();
