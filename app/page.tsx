@@ -7,7 +7,7 @@ import { Icon, I } from '@/lib/icons'
 import CustomerNav from '@/lib/nav'
 const PAGE = 20
 const disp = 'font-[family-name:var(--font-display)]'
-const rail = 'flex gap-2 overflow-x-auto snap-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+const rail = 'flex gap-2 p-1 overflow-x-auto snap-x overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
 const price = (i: any) => (i.tag === 'on_sale' && i.sale_price ? i.sale_price : i.price)
 export default function Shop() {
   const r = useRouter()
@@ -74,12 +74,12 @@ export default function Shop() {
         </div>
         <div className="space-y-0.5 px-0.5 pt-2">
           <p className="flex items-baseline gap-1.5"><span className="text-base font-extrabold">Rs {price(i)}</span>{sale && <s className="text-sm text-stone-500">Rs {i.price}</s>}</p>
-          <p className="line-clamp-2 text-sm font-medium leading-snug">{i.name}{i.name_ur && <span dir="rtl" className="block truncate text-stone-600">{i.name_ur}</span>}</p>
+          <p className="line-clamp-2 text-sm font-medium leading-snug">{i.name}  {i.name_ur && <span dir="rtl" className=" truncate text-stone-800 text-lg"> {i.name_ur}</span>}</p>
           <p className="text-xs text-stone-600">per {i.unit}{i.tag !== 'on_sale' && ` · ${TAGS[i.tag]}`}</p>
         </div>
       </li>)
   }
-  const chip = (on: boolean) => 'min-h-11 shrink-0 snap-start rounded-full px-5 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-[var(--brand)] text-white ring-[var(--brand)]' : 'bg-white text-stone-800 ring-stone-300')
+  const chip = (on: boolean) => 'min-h-8 h-8 shrink-0 snap-start rounded-full px-5 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-[var(--brand)] text-white ring-[var(--brand)]' : 'bg-white text-stone-800 ring-stone-300')
   const grid = 'grid grid-cols-2 gap-x-2.5 gap-y-4 sm:gap-x-3 sm:gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
   return (
     <div className="mx-auto w-full max-w-7xl pb-40 md:pb-32">
@@ -92,14 +92,14 @@ export default function Shop() {
         </div>
         <ul className={rail + ' mt-3 text-sm font-medium sm:mt-4'}>{['Cash on delivery', 'Live order tracking', 'Picked fresh daily'].map(t => <li key={t} className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Icon d={I.check} className="h-4 w-4" />{t}</li>)}</ul>
       </section>
-      <div className="sticky top-0 z-10 space-y-2 bg-[#fbf8f3]/95 px-3 py-2 backdrop-blur sm:px-4 sm:py-3 md:top-16">
+      <div className="sticky top-0 z-10 space-y-2 bg-[#fbf8f3]/95 px-3 backdrop-blur sm:px-4 mt-2 md:top-16">
         <label className="relative block"><span className="sr-only">Search fruit</span><Icon d={I.search} className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search fruit" className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-3 text-base shadow-sm sm:min-h-12" /></label>
         {cats.length > 0 && <div className={rail} role="group" aria-label="Categories">{[{ id: 'all', name: 'All' }, ...cats].map(c => <button key={c.id} aria-pressed={cat === c.id} onClick={() => setCat(c.id)} className={chip(cat === c.id)}>{c.name}</button>)}</div>}
       </div>
-      <main className="space-y-4 px-3 pt-1 sm:space-y-5 sm:px-4 sm:pt-2">
+      <main className="space-y-1 px-3 pt-1 sm:px-4">
         {pinned && <section className="rounded-3xl bg-[var(--brand-soft)] p-4"><p className="mb-3 font-bold">Shared with you</p><ul className={grid}>{tile(pinned, 0)}</ul></section>}
         <div className="flex items-center gap-2"><div className={rail + ' flex-1'} role="group" aria-label="Filter">{[['all', 'All'], ['fresh', 'Fresh'], ['on_sale', 'On sale'], ['one_day_old', '1 day old']].map(([k, l]) => <button key={k} aria-pressed={tag === k} onClick={() => setTag(k)} className={chip(tag === k)}>{l}</button>)}</div>
-          <label className="shrink-0"><span className="sr-only">Sort</span><select value={sort} onChange={e => setSort(e.target.value)} className="min-h-11 rounded-full border border-stone-300 bg-white px-3 text-sm font-semibold"><option value="new">Newest</option><option value="low">Price: low</option><option value="high">Price: high</option></select></label></div>
+          <label className="shrink-0"><span className="sr-only">Sort</span><select value={sort} onChange={e => setSort(e.target.value)} className="min-h-8 rounded-full border border-stone-300 bg-white px-2 text-sm font-semibold"><option value="new">Newest</option><option value="low">Price: low</option><option value="high">Price: high</option></select></label></div>
         <ul className={grid}>
           {items === null && Array.from({ length: 10 }, (_, n) => <li key={n}><div className="aspect-square animate-pulse rounded-2xl bg-stone-200" /><div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-stone-200" /><div className="mt-1.5 h-4 w-full animate-pulse rounded bg-stone-200" /></li>)}
           {items?.map(tile)}
