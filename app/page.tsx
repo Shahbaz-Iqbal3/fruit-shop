@@ -66,37 +66,37 @@ export default function Shop() {
           {sale && <span className="absolute left-0 top-2.5 rounded-r-full bg-rose-700 px-2.5 py-1 text-xs font-bold text-white">{Math.round((1 - i.sale_price / i.price) * 100)}% OFF</span>}
           {c ? (
             <div key={c} style={{ animation: 'pop 200ms ease-out' }} className="absolute bottom-2 right-2 flex items-center rounded-full bg-[var(--brand)] text-white shadow-lg">
-              <button aria-label={'Remove one ' + i.name} onClick={() => add(i, -1)} className="flex h-11 w-10 items-center justify-center active:scale-90"><Icon d={I.minus} className="h-4 w-4" /></button>
+              <button aria-label={'Remove one ' + i.name} onClick={() => add(i, -1)} className="flex h-11 w-9 items-center justify-center active:scale-90"><Icon d={I.minus} className="h-4 w-4" /></button>
               <span className="min-w-5 text-center font-bold">{c}</span>
-              <button aria-label={'Add one more ' + i.name} onClick={() => add(i, 1)} className="flex h-11 w-10 items-center justify-center active:scale-90"><Icon d={I.plus} className="h-4 w-4" /></button>
+              <button aria-label={'Add one more ' + i.name} onClick={() => add(i, 1)} className="flex h-11 w-9 items-center justify-center active:scale-90"><Icon d={I.plus} className="h-4 w-4" /></button>
             </div>
-          ) : <button aria-label={'Add ' + i.name} onClick={() => add(i, 1)} className="absolute bottom-2 right-2 min-h-11 rounded-xl border border-[var(--brand)] bg-white px-5 text-sm font-extrabold uppercase text-[var(--brand)] shadow active:scale-95">Add</button>}
+          ) : <button aria-label={'Add ' + i.name} onClick={() => add(i, 1)} className="absolute bottom-2 right-2 min-h-11 rounded-xl border border-[var(--brand)] bg-white px-4 text-sm font-extrabold uppercase text-[var(--brand)] shadow active:scale-95">Add</button>}
         </div>
         <div className="space-y-0.5 px-0.5 pt-2">
           <p className="flex items-baseline gap-1.5"><span className="text-base font-extrabold">Rs {price(i)}</span>{sale && <s className="text-sm text-stone-500">Rs {i.price}</s>}</p>
-          <p className="line-clamp-2 text-sm font-medium leading-snug">{i.name}{i.name_ur && <span dir="rtl" className="block text-stone-600">{i.name_ur}</span>}</p>
+          <p className="line-clamp-2 text-sm font-medium leading-snug">{i.name}{i.name_ur && <span dir="rtl" className="block truncate text-stone-600">{i.name_ur}</span>}</p>
           <p className="text-xs text-stone-600">per {i.unit}{i.tag !== 'on_sale' && ` · ${TAGS[i.tag]}`}</p>
         </div>
       </li>)
   }
   const chip = (on: boolean) => 'min-h-11 shrink-0 snap-start rounded-full px-5 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-[var(--brand)] text-white ring-[var(--brand)]' : 'bg-white text-stone-800 ring-stone-300')
-  const grid = 'grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
+  const grid = 'grid grid-cols-2 gap-x-2.5 gap-y-4 sm:gap-x-3 sm:gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
   return (
     <div className="mx-auto w-full max-w-7xl pb-40 md:pb-32">
       <CustomerNav active="shop" />
-      <section className="px-5 pb-7 pt-6 text-white sm:rounded-b-3xl" style={{ background: 'linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, black))' }}>
+      <section className="px-4 pb-5 pt-5 text-white sm:rounded-b-3xl sm:px-5 sm:pb-7 sm:pt-6" style={{ background: 'linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, black))' }}>
         <div className="flex items-center gap-4">
           {shop.logo_url ? <img src={shop.logo_url} alt="" className="h-12 w-12 rounded-2xl object-cover ring-2 ring-white/60" /> : <span className={disp + ' flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold'}>{shop.name[0]}</span>}
           <div className="min-w-0 flex-1"><p className="text-sm text-white/85">Fresh fruit, delivered to you</p><h1 className={disp + ' truncate text-2xl font-bold leading-tight sm:text-3xl'}>{shop.name}</h1></div>
           {shop.whatsapp && <a href={waLink(shop.whatsapp, 'Hi, I have a question')} aria-label="Chat on WhatsApp" className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[var(--brand)] shadow"><Icon d={I.chat} /></a>}
         </div>
-        <ul className={rail + ' mt-4 text-sm font-medium'}>{['Cash on delivery', 'Live order tracking', 'Picked fresh daily'].map(t => <li key={t} className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Icon d={I.check} className="h-4 w-4" />{t}</li>)}</ul>
+        <ul className={rail + ' mt-3 text-sm font-medium sm:mt-4'}>{['Cash on delivery', 'Live order tracking', 'Picked fresh daily'].map(t => <li key={t} className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Icon d={I.check} className="h-4 w-4" />{t}</li>)}</ul>
       </section>
-      <div className="sticky top-0 z-10 space-y-2 bg-[#fbf8f3]/95 px-4 py-3 backdrop-blur md:top-16">
-        <label className="relative block"><span className="sr-only">Search fruit</span><Icon d={I.search} className="pointer-events-none absolute left-3.5 top-3.5 h-5 w-5 text-stone-500" /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search fruit" className="min-h-12 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-3 text-base shadow-sm" /></label>
+      <div className="sticky top-0 z-10 space-y-2 bg-[#fbf8f3]/95 px-3 py-2 backdrop-blur sm:px-4 sm:py-3 md:top-16">
+        <label className="relative block"><span className="sr-only">Search fruit</span><Icon d={I.search} className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search fruit" className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-3 text-base shadow-sm sm:min-h-12" /></label>
         {cats.length > 0 && <div className={rail} role="group" aria-label="Categories">{[{ id: 'all', name: 'All' }, ...cats].map(c => <button key={c.id} aria-pressed={cat === c.id} onClick={() => setCat(c.id)} className={chip(cat === c.id)}>{c.name}</button>)}</div>}
       </div>
-      <main className="space-y-5 px-4 pt-2">
+      <main className="space-y-4 px-3 pt-1 sm:space-y-5 sm:px-4 sm:pt-2">
         {pinned && <section className="rounded-3xl bg-[var(--brand-soft)] p-4"><p className="mb-3 font-bold">Shared with you</p><ul className={grid}>{tile(pinned, 0)}</ul></section>}
         <div className="flex items-center gap-2"><div className={rail + ' flex-1'} role="group" aria-label="Filter">{[['all', 'All'], ['fresh', 'Fresh'], ['on_sale', 'On sale'], ['one_day_old', '1 day old']].map(([k, l]) => <button key={k} aria-pressed={tag === k} onClick={() => setTag(k)} className={chip(tag === k)}>{l}</button>)}</div>
           <label className="shrink-0"><span className="sr-only">Sort</span><select value={sort} onChange={e => setSort(e.target.value)} className="min-h-11 rounded-full border border-stone-300 bg-white px-3 text-sm font-semibold"><option value="new">Newest</option><option value="low">Price: low</option><option value="high">Price: high</option></select></label></div>
@@ -107,10 +107,10 @@ export default function Shop() {
         {items && items.length === 0 && <p className="rounded-3xl bg-white p-10 text-center text-stone-600 ring-1 ring-stone-200">No fruit matches. Try another search or filter.</p>}
         {hasMore && <div ref={sentinel} key={items?.length} className="flex justify-center py-6"><span className="h-7 w-7 animate-spin rounded-full border-4 border-stone-300 border-t-[var(--brand)]" role="status" aria-label="Loading more" /></div>}
       </main>
-      {count > 0 && <div style={{ animation: 'rise 300ms ease-out' }} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] px-4 pb-3 md:bottom-0 md:pb-6"><button onClick={() => setOpen(true)} className="mx-auto flex min-h-16 w-full max-w-4xl items-center gap-3 rounded-3xl bg-stone-900 px-5 text-white shadow-2xl active:scale-[0.99]"><span className="relative"><Icon d={I.cart} className="h-6 w-6" /><span key={count} style={{ animation: 'pop 200ms ease-out' }} className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-xs font-bold">{count}</span></span><span className="flex-1 text-left font-semibold">View your order</span><span className="text-lg font-bold">Rs {total}</span></button></div>}
+      {count > 0 && <div style={{ animation: 'rise 300ms ease-out' }} className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] px-4 pb-3 md:bottom-0 md:pb-6"><button onClick={() => setOpen(true)} className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 rounded-2xl bg-stone-900 px-5 text-white shadow-2xl active:scale-[0.99]"><span className="relative"><Icon d={I.cart} className="h-6 w-6" /><span key={count} style={{ animation: 'pop 200ms ease-out' }} className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--brand)] px-1 text-xs font-bold">{count}</span></span><span className="flex-1 text-left font-semibold">View your order</span><span className="text-lg font-bold">Rs {total}</span></button></div>}
       {open && (
         <div className="fixed inset-0 z-20 flex items-end bg-black/50 md:items-center" onClick={() => setOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Your order" onClick={e => e.stopPropagation()} style={{ animation: 'sheet 250ms ease-out' }} className="mx-auto max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:rounded-3xl">
+          <div role="dialog" aria-modal="true" aria-label="Your order" onClick={e => e.stopPropagation()} style={{ animation: 'sheet 250ms ease-out' }} className="mx-auto max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:rounded-3xl">
             <div className="flex items-center justify-between"><h2 className={disp + ' text-2xl font-bold'}>Your order</h2><button aria-label="Close" onClick={() => setOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100"><Icon d={I.x} /></button></div>
             {lines.length === 0 ? <p className="py-6 text-center text-stone-600">Your order is empty.</p> : <ul className="divide-y divide-stone-200">{Object.values(cart).map(({ i }) => <li key={i.id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="font-semibold">{i.name}</p><p className="text-sm text-stone-600">Rs {price(i) * cart[i.id].qty}</p></div><div className="w-36 shrink-0">{step(i)}</div></li>)}</ul>}
             <p className="flex justify-between text-lg font-bold"><span>Total</span><span>Rs {total}</span></p>
@@ -119,8 +119,8 @@ export default function Shop() {
               {field('name', 'Your name', { autoComplete: 'name' })}{field('phone', 'Phone number', { type: 'tel', inputMode: 'tel', autoComplete: 'tel' })}{field('address', 'Delivery address', { autoComplete: 'street-address' })}{field('note', 'Note for the shop (optional)')}
             </div>
             {err && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{err}</p>}
-            <button onClick={submit} disabled={busy || !lines.length} className="min-h-14 w-full rounded-2xl bg-[var(--brand)] text-lg font-bold text-white disabled:opacity-40">{busy ? 'Placing order…' : `Place order · Rs ${total}`}</button>
-            <p className="text-center text-sm text-stone-600">Pay with cash when your fruit arrives</p>
+            <div className="sticky bottom-0 -mx-5 -mb-5 bg-white/95 px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur"><button onClick={submit} disabled={busy || !lines.length} className="min-h-14 w-full rounded-2xl bg-[var(--brand)] text-lg font-bold text-white disabled:opacity-40">{busy ? 'Placing order…' : `Place order · Rs ${total}`}</button>
+            <p className="mt-1.5 text-center text-xs text-stone-600">Pay with cash when your fruit arrives</p></div>
           </div>
         </div>)}
     </div>)

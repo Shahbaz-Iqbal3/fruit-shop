@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   description: "Order fresh fruit online",
 };
 
+export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' as const }
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
