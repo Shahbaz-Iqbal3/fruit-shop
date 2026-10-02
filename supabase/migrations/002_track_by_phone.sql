@@ -1,0 +1,2 @@
+create or replace function orders_by_phone(p_phone text) returns table(id uuid,status text,total numeric,items jsonb,created_at timestamptz) language sql security definer as $$ select o.id,o.status,o.total,o.items,o.created_at from orders o where length(regexp_replace(p_phone,'\D','','g'))>=10 and right(regexp_replace(o.phone,'\D','','g'),10)=right(regexp_replace(p_phone,'\D','','g'),10) order by o.created_at desc limit 20 $$;
+grant execute on function orders_by_phone(text) to anon,authenticated;

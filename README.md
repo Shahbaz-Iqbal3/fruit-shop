@@ -7,3 +7,6 @@
 
 ## Shop branding
 Owner > /admin > "Shop branding": name, logo, brand color, WhatsApp number. Existing shops: run `supabase/migrations/001_shop_settings.sql` once in the Supabase SQL editor. New shops get it from setup.
+
+## Phone tracking
+Existing database: run `supabase/migrations/002_track_by_phone.sql` once. Customers track orders at `/track` with their phone number.
