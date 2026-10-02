@@ -5,6 +5,7 @@ import { useShop } from '@/lib/shop'
 import { Icon, I } from '@/lib/icons'
 import Camera from '@/lib/camera'
 import Reports from './reports'
+import Notifications from './notifications'
 const NEXT: Record<string, string> = { placed: 'accepted', accepted: 'preparing', preparing: 'out_for_delivery', out_for_delivery: 'delivered' }
 const ACT: Record<string, string> = { placed: 'Accept order', accepted: 'Start preparing', preparing: 'Out for delivery', out_for_delivery: 'Mark delivered' }
 const LBL: Record<string, string> = { placed: 'New', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' }
@@ -19,7 +20,7 @@ export default function Admin() {
   const [tab, setTab] = useState<'orders' | 'items' | 'reports' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
   const [orders, setOrders] = useState<any[]>([]), [reportOrders, setReportOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
-  const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), io = useRef<IntersectionObserver | null>(null)
+  const [cats, setCats] = useState<any[]>([]), [catSheet, setCatSheet] = useState(false), [newCat, setNewCat] = useState(''), [q, setQ] = useState(''), [cf, setCf] = useState('all'), [af, setAf] = useState('all'), [shown, setShown] = useState(20), [oShown, setOShown] = useState(15), [shopTab, setShopTab] = useState<'look' | 'notify'>('look'), io = useRef<IntersectionObserver | null>(null)
   useEffect(() => { setShown(20); setOShown(15) }, [q, cf, af, tab, view])
   const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), [repeatAlarm, setRepeatAlarm] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
@@ -90,7 +91,7 @@ export default function Admin() {
         <h1 className={disp + ' flex-1 truncate text-xl font-bold'}>{shop.name}</h1>
         {armed ? <span className={'flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-bold ' + (fresh ? 'animate-pulse bg-rose-700 text-white' : 'bg-green-100 text-green-900')}><Icon d={I.bell} className="h-4 w-4" />{fresh ? `${fresh} new` : 'Sound on'}</span> : <button onClick={arm} className="flex min-h-11 items-center gap-2 rounded-full bg-[var(--brand)] px-4 text-sm font-bold text-white"><Icon d={I.bell} className="h-4 w-4" />Start orders</button>}
       </header>
-      <main className="space-y-3 px-4 pt-2">
+      <main key={tab + shopTab} style={{ animation: 'rise 300ms ease-out' }} className="space-y-3 px-4 pt-2">
         {tab === 'orders' && <>
           {!armed && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Tap “Start taking orders” so new orders ring loudly. Keep this page open.</p>}
           <div className="flex gap-2">{(['active', 'done'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={'min-h-11 rounded-full px-5 text-sm font-semibold ring-1 ' + (view === v ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white ring-stone-300')}>{v === 'active' ? 'Active' : 'History'}</button>)}</div>
@@ -121,7 +122,8 @@ export default function Admin() {
           {vis.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>{items.length ? 'No fruit matches these filters.' : 'No fruit yet. Tap Add to create your first item.'}</p>}
         </>}
         {tab === 'reports' && <Reports orders={reportOrders} items={items} categories={cats} />}
-        {tab === 'brand' && <section className={card + ' space-y-4'}>
+        {tab === 'brand' && <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl bg-stone-200/70 p-1">{([['look', 'Shop look'], ['notify', 'Notifications']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={shopTab === k} onClick={() => setShopTab(k)} className={'min-h-11 rounded-xl text-sm font-bold transition-colors ' + (shopTab === k ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600')}>{l}</button>)}</div>}
+        {tab === 'brand' && shopTab === 'look' && <section className={card + ' space-y-4'}>
           <h2 className={disp + ' text-2xl font-bold'}>Shop look</h2>
           <div className="flex items-center gap-3 rounded-2xl p-4 text-white" style={{ background: shop.color }}>{shop.logo_url ? <img src={shop.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-xl font-bold">{shop.name[0]}</span>}<p className={disp + ' text-2xl font-bold'}>{shop.name}</p></div>
           {lab('Shop name', <input className={inp} value={shop.name} onChange={e => { setShop({ ...shop, name: e.target.value }); setSaved(false) }} />)}
@@ -132,6 +134,7 @@ export default function Admin() {
            <button onClick={async () => { await sb.auth.signOut(); setUser(null) }} className="min-h-12 w-full rounded-2xl bg-stone-100 font-semibold">Log out</button>
           <div className="flex min-h-14 items-center justify-between gap-4 border-t border-stone-200 pt-4 font-semibold"><span id="repeat-alarm-label"><span className="block">Repeat new-order alarm</span><span className="text-sm font-normal text-stone-600">Keep ringing until you handle the new order</span></span><button type="button" role="switch" aria-checked={repeatAlarm} aria-labelledby="repeat-alarm-label" onClick={() => { const next = !repeatAlarm; setRepeatAlarm(next); try { localStorage.setItem('repeatAlarm', String(next)) } catch {} }} className={'flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ' + (repeatAlarm ? 'bg-[var(--brand)]' : 'bg-stone-300')}><span className={'h-6 w-6 rounded-full bg-white shadow transition-transform ' + (repeatAlarm ? 'translate-x-6' : '')} /></button></div>
          </section>}
+        {tab === 'brand' && shopTab === 'notify' && <Notifications />}
       </main>
       {tab === 'items' && sel.length > 0 && <button onClick={share} className="fixed inset-x-4 bottom-24 mx-auto flex min-h-14 max-w-md items-center justify-center gap-2 rounded-2xl bg-green-700 text-lg font-bold text-white shadow-xl"><Icon d={I.share} />Share {sel.length} {sel.length === 1 ? 'item' : 'items'}</button>}
       <nav aria-label="Sections" className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:inset-y-0 lg:right-auto lg:w-56 lg:border-r lg:border-t-0 lg:pt-6"><ul className="mx-auto flex max-w-3xl lg:max-w-none lg:flex-col lg:gap-1 lg:px-3">{tabs.map(([k, l, d]) => <li key={k} className="flex-1"><button aria-current={tab === k} onClick={() => setTab(k)} className={'relative flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base ' + (tab === k ? 'text-[var(--brand)]' : 'text-stone-600')}><Icon d={d} className="h-6 w-6" />{l}{k === 'orders' && fresh > 0 && <span className="absolute right-[28%] top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-700 px-1 text-xs text-white">{fresh}</span>}</button></li>)}<li className="flex-1"><a href="/" className="flex min-h-16 w-full flex-col items-center justify-center gap-1 text-xs font-bold text-stone-600 lg:min-h-12 lg:flex-row lg:justify-start lg:gap-3 lg:rounded-xl lg:px-4 lg:text-base"><Icon d={I.cart} className="h-6 w-6" />View shop</a></li></ul></nav>
