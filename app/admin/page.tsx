@@ -18,11 +18,7 @@ export default function Admin() {
   const [tab, setTab] = useState<'orders' | 'items' | 'brand'>('orders'), [view, setView] = useState<'active' | 'done'>('active')
   const [orders, setOrders] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [form, setForm] = useState<any>(null), [sel, setSel] = useState<string[]>([])
   const [shop, setShop] = useShop(), [saved, setSaved] = useState(false)
-<<<<<<< HEAD
-  const [armed, setArmed] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
-=======
-  const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), ctx = useRef<AudioContext | null>(null), beep = useRef<any>(null)
->>>>>>> ba91ad0a297e23032f40f669256b1e9fe80e4ec9
+  const [cam, setCam] = useState(false), [tried, setTried] = useState(false), [upBusy, setUpBusy] = useState(false), [armed, setArmed] = useState(false), audio = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { sb.auth.getUser().then(x => setUser(x.data.user)) }, [])
   const load = async () => { setOrders((await sb.from('orders').select('*').order('created_at', { ascending: false }).limit(100)).data || []); setItems((await sb.from('items').select('*').order('created_at', { ascending: false })).data || []) }
   useEffect(() => { if (!user) return; load(); const ch = sb.channel('o').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, load).subscribe(); return () => { sb.removeChannel(ch) } }, [user])
