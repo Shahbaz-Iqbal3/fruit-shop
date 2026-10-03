@@ -1,0 +1,3 @@
+alter table items add column if not exists stock_status text not null default 'in_stock' check (stock_status in ('in_stock','sold_out','back_tomorrow'));
+create or replace function search_orders(q text) returns setof orders language sql stable as $$ select o.* from orders o where is_owner() and length(trim(q)) >= 3 and (o.customer_name ilike '%'||trim(q)||'%' or o.address ilike '%'||trim(q)||'%' or (length(regexp_replace(q,'\D','','g')) >= 3 and regexp_replace(o.phone,'\D','','g') like '%'||regexp_replace(q,'\D','','g')||'%')) order by o.created_at desc limit 50 $$;
+grant execute on function search_orders(text) to authenticated;

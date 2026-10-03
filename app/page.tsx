@@ -12,7 +12,7 @@ const price = (i: any) => (i.tag === 'on_sale' && i.sale_price ? i.sale_price : 
 export default function Shop() {
   const r = useRouter()
   const [shop] = useShop()
-  const [items, setItems] = useState<any[] | null>(null), [hasMore, setHasMore] = useState(false), [loading, setLoading] = useState(false), [cats, setCats] = useState<any[]>([]), [pinned, setPinned] = useState<any>(null)
+  const [items, setItems] = useState<any[] | null>(null), [hasMore, setHasMore] = useState(false), [loading, setLoading] = useState(false), [cats, setCats] = useState<any[]>([]), [pinned, setPinned] = useState<any[]>([])
   const [cat, setCat] = useState('all'), [tag, setTag] = useState('all'), [sort, setSort] = useState('new'), [q, setQ] = useState(''), [dq, setDq] = useState('')
   const [cart, setCart] = useState<Record<string, { i: any; qty: number }>>({}), [open, setOpen] = useState(false)
   const [f, setF] = useState({ name: '', phone: '', address: '', note: '' }), [known, setKnown] = useState(false), [tried, setTried] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState('')
@@ -23,7 +23,7 @@ export default function Shop() {
     if (!configured) { r.replace('/setup'); return }
     sb.from('categories').select('*').order('sort').order('created_at').then(x => setCats(x.data || []))
     const id = new URLSearchParams(location.search).get('item')
-    if (id) sb.from('items').select('*').eq('id', id).eq('available', true).maybeSingle().then(x => setPinned(x.data))
+    if (id) sb.from('items').select('*').in('id', id.split(',').slice(0, 12)).eq('available', true).then(x => setPinned(x.data || []))
   }, [r])
   useEffect(() => { filterRail.current?.scrollTo({ left: 0 }) }, [cats])
   const fetchPage = useCallback(async (from: number) => {
@@ -59,13 +59,13 @@ export default function Shop() {
       <button aria-label="Add one more" onClick={() => add(i, 1)} className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand)] text-white shadow-sm active:scale-90"><Icon d={I.plus} /></button>
     </div>)
   const tile = (i: any, n: number) => {
-    const c = cart[i.id]?.qty || 0, sale = i.tag === 'on_sale' && i.sale_price
+    const c = cart[i.id]?.qty || 0, sale = i.tag === 'on_sale' && i.sale_price, out = i.stock_status === 'sold_out' || i.stock_status === 'back_tomorrow'
     return (
       <li key={i.id} style={{ animation: 'rise 420ms ease-out both', animationDelay: Math.min(n % PAGE, 10) * 35 + 'ms' }} className="group flex flex-col">
         <div className="relative aspect-square overflow-hidden rounded-2xl bg-stone-100 ring-1 ring-stone-200">
-          {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <span className="flex h-full items-center justify-center text-4xl text-stone-300">{i.name[0]}</span>}
+          {i.image_url ? <img src={i.image_url} alt={i.name} loading="lazy" decoding="async" className={'h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ' + (out ? 'opacity-60 grayscale' : '')} /> : <span className="flex h-full items-center justify-center text-4xl text-stone-300">{i.name[0]}</span>}
           {sale && <span className="absolute left-0 top-2.5 rounded-r-full bg-rose-700 px-2.5 py-1 text-xs font-bold text-white">{Math.round((1 - i.sale_price / i.price) * 100)}% OFF</span>}
-          {c ? (
+          {out ? <span className="absolute inset-x-2 bottom-2 rounded-xl bg-stone-900/85 px-3 py-2 text-center text-sm font-bold text-white backdrop-blur">{i.stock_status === 'back_tomorrow' ? 'Back tomorrow' : 'Sold out'}</span> : c ? (
             <div key={c} style={{ animation: 'pop 200ms ease-out' }} className="absolute bottom-2 right-2 flex items-center rounded-full bg-[var(--brand)] text-white shadow-lg">
               <button aria-label={'Remove one ' + i.name} onClick={() => add(i, -1)} className="flex h-11 w-9 items-center justify-center active:scale-90"><Icon d={I.minus} className="h-4 w-4" /></button>
               <span className="min-w-5 text-center font-bold">{c}</span>
@@ -102,7 +102,7 @@ export default function Shop() {
         </div>
       </div>
       <main className="space-y-1 px-3 pt-1 sm:px-4">
-        {pinned && <section className="rounded-3xl bg-[var(--brand-soft)] p-4"><p className="mb-3 font-bold">Shared with you</p><ul className={grid}>{tile(pinned, 0)}</ul></section>}
+        {pinned.length > 0 && <section className="rounded-3xl bg-[var(--brand-soft)] p-4"><p className="mb-3 font-bold">Shared with you</p><ul className={grid}>{pinned.map(tile)}</ul></section>}
         <ul className={grid}>
           {items === null && Array.from({ length: 10 }, (_, n) => <li key={n}><div className="aspect-square animate-pulse rounded-2xl bg-stone-200" /><div className="mt-2 h-4 w-2/3 animate-pulse rounded bg-stone-200" /><div className="mt-1.5 h-4 w-full animate-pulse rounded bg-stone-200" /></li>)}
           {items?.map(tile)}

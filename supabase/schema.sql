@@ -37,3 +37,6 @@ create policy "own devices" on push_subs for all using (is_owner() and user_id =
 create or replace function notify_new_order() returns trigger language plpgsql security definer as $$ declare u text; begin select value into u from app_config where key = 'notify_url'; if u is not null then perform net.http_post(url := u, headers := '{"Content-Type":"application/json"}'::jsonb, body := jsonb_build_object('order_id', new.id)); end if; return new; end $$;
 drop trigger if exists on_order_notify on orders;
 create trigger on_order_notify after insert on orders for each row execute function notify_new_order();
+alter table items add column if not exists stock_status text not null default 'in_stock' check (stock_status in ('in_stock','sold_out','back_tomorrow'));
+create or replace function search_orders(q text) returns setof orders language sql stable as $$ select o.* from orders o where is_owner() and length(trim(q)) >= 3 and (o.customer_name ilike '%'||trim(q)||'%' or o.address ilike '%'||trim(q)||'%' or (length(regexp_replace(q,'\D','','g')) >= 3 and regexp_replace(o.phone,'\D','','g') like '%'||regexp_replace(q,'\D','','g')||'%')) order by o.created_at desc limit 50 $$;
+grant execute on function search_orders(text) to authenticated;
