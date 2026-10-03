@@ -74,8 +74,7 @@ export async function buildCard(shop: Shop, items: any[], url: string): Promise<
   c.fillStyle = accent; c.fillText(a, sx, 1125); c.fillStyle = ink; c.fillText(b, sx + aw, 1125)
   // link pill
   c.fillStyle = '#fff'; rr(70, 1170, 940, 120, 60); c.fill()
-  const link = url.replace(/^https?:\/\//, '').split('?')[0].replace(/\/$/, ''), wa = shop.whatsapp
-  c.fillStyle = '#1c1917'; c.font = f(800, 42)
-  if (wa) { c.textAlign = 'left'; c.fillText(fit(c, link, 520), 120, 1245); c.textAlign = 'right'; c.font = f(700, 34); c.fillText(`WhatsApp ${wa}`, 970, 1244) } else { c.textAlign = 'center'; c.fillText(fit(c, link, 820), W / 2, 1245) }
+  const link = url.replace(/^https?:\/\//, '').split('?')[0].replace(/\/$/, '')
+  c.fillStyle = '#1c1917'; c.font = f(800, 46); c.textAlign = 'center'; c.fillText(fit(c, link, 840), W / 2, 1246)
   return new Promise(res => cv.toBlob(b => res(b!), 'image/jpeg', 0.92))
 }
