@@ -4,10 +4,12 @@ import { useMemo, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 type Order = { id: string; customer_name: string | null; phone: string | null; items: { id: string; name: string; unit: string; price: number; qty: number }[]; total: number; status: string; created_at: string }
-type Item = { id: string; category_id: string | null; name: string; unit: string; price: number; available: boolean; tag: string }
+type Item = { id: string; category_id: string | null; name: string; unit: string; price: number; available: boolean; tag: string; stock_status?: string }
 type Category = { id: string; name: string }
 type Props = { orders: Order[]; items: Item[]; categories: Category[] }
 type Metric = 'revenue' | 'orders' | 'units' | 'average'
+const statusColor: Record<string, string> = { placed: '#e11d48', accepted: '#0284c7', preparing: '#b45309', out_for_delivery: '#7c3aed', delivered: '#15803d', cancelled: '#78716c' }
+const presets: [string, number][] = [['Today', 0], ['7 days', 6], ['This month', -1], ['30 days', 29], ['90 days', 89]]
 const palette = ['var(--brand)', '#16a34a', '#d97706', '#0ea5e9', '#7c3aed', '#a8a29e']
 const statusNames: Record<string, string> = { placed: 'New', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' }
 const metricNames: Record<Metric, string> = { revenue: 'Sales', orders: 'Orders', units: 'Items sold', average: 'Avg. order' }
@@ -36,6 +38,7 @@ export default function Reports({ orders, items, categories }: Props) {
   const [category, setCategory] = useState('all')
   const [interval, setInterval] = useState<'day' | 'week' | 'month'>('day')
   const [metric, setMetric] = useState<Metric>('revenue')
+  const [more, setMore] = useState(false)
   const catalog = useMemo(() => new Map(items.map(item => [item.id, item])), [items])
 
   const report = useMemo(() => {
@@ -93,81 +96,91 @@ export default function Reports({ orders, items, categories }: Props) {
   }, [orders, categories, catalog, from, to, status, category, interval])
 
   const chartRows = report.trend.map(point => ({ ...point, value: point[metric] }))
-  const stat = (label: string, value: string, note: string, _c: string) => <div className="border-l-2 border-white/40 pl-3"><p className="text-sm font-medium text-white/80">{label}</p><p className="mt-1 text-2xl font-bold text-white sm:text-3xl">{value}</p><p className="mt-1 text-xs text-white/75">{note}</p></div>
+  const monthStart = () => { const d = new Date(); return dateValue(new Date(d.getFullYear(), d.getMonth(), 1)) }
+  const rangeOn = (n: number) => to === dateInput(0) && from === (n === -1 ? monthStart() : dateInput(n))
+  const setRange = (n: number) => { setFrom(n === -1 ? monthStart() : dateInput(n)); setTo(dateInput(0)) }
+  const filtersOn = (status !== 'all' ? 1 : 0) + (category !== 'all' ? 1 : 0)
+  const label = presets.find(([, n]) => rangeOn(n))?.[0] || `${from} to ${to}`
+  const avg = report.saleOrders.length ? report.sales / report.saleOrders.length : 0
+  const cancelPct = report.filtered.length ? Math.round(report.cancelled / report.filtered.length * 100) : 0
+  const empty = !report.saleOrders.length
+  const chip = (on: boolean) => 'min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white text-stone-800 ring-stone-300')
+  const rail = 'flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+  const tip = { background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 13 }
+  const head = (t: string, sub?: string) => <div className="mb-3"><h3 className="font-[family-name:var(--font-display)] text-xl font-bold">{t}</h3>{sub && <p className="text-sm text-stone-600">{sub}</p>}</div>
+  const tile = (name: string, value: string, note: string, color = 'text-stone-900') => <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200"><p className="text-sm text-stone-600">{name}</p><p className={'mt-0.5 text-2xl font-bold ' + color}>{value}</p><p className="text-xs text-stone-600">{note}</p></div>
+  const ranked = (rows: { name: string; sub: string; value: number }[], max: number) => <ol className="space-y-3">{rows.map((r, n) => <li key={r.name + n}><div className="flex items-center gap-3"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand)]">{n + 1}</span><div className="min-w-0 flex-1"><p className="truncate font-semibold">{r.name}</p><p className="text-xs text-stone-600">{r.sub}</p></div><p className="shrink-0 font-bold">{money(r.value)}</p></div><div className="ml-11 mt-1.5 h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full bg-[var(--brand)]" style={{ width: `${max ? Math.max(3, r.value / max * 100) : 0}%` }} /></div></li>)}</ol>
+  const field = 'mt-1 block w-full ' + input
 
-  return <section className="min-w-0 space-y-4">
-    <div className="overflow-hidden rounded-3xl text-white" style={{ background: 'linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, black))' }}>
-      <div className="grid gap-5 p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div><p className="text-sm font-semibold text-white/85">Shop reports · {orders.length.toLocaleString()} orders loaded</p><h2 className="mt-1 max-w-2xl font-[family-name:var(--font-display)] text-2xl font-bold leading-tight sm:text-4xl">Know what’s moving.<br /><span className="opacity-80">And when.</span></h2><p className="mt-3 max-w-lg text-sm leading-6 text-white/85">Sales, baskets, and repeat buyers, read straight from your order book.</p></div>
-        <button onClick={() => csvDownload(`market-report-${from}-to-${to}.csv`, [['Period', 'Sales (Rs)', 'Orders', 'Items sold', 'Average order (Rs)'], ...report.trend.map(point => [point.key, Math.round(point.revenue), point.orders, point.units, Math.round(point.average)])])} className="min-h-11 rounded-xl bg-white/15 px-4 text-sm font-bold text-white transition hover:bg-white/25">Download CSV ↓</button>
-      </div>
-      <div className="grid grid-cols-2 gap-5 border-t border-white/20 px-5 py-5 sm:grid-cols-3 sm:px-7 lg:grid-cols-5">
-        {stat('Sales value', money(report.sales), 'Cancelled orders excluded', '#f6b73c')}
-        {stat('Orders', report.saleOrders.length.toLocaleString(), `${report.cancelled} cancelled`, '#f47655')}
-        {stat('Items moved', report.soldUnits.toLocaleString(), 'Units / kg as listed', '#c4e36b')}
-        {stat('Average basket', money(report.saleOrders.length ? report.sales / report.saleOrders.length : 0), 'Per non-cancelled order', '#75c6b1')}
-        {stat('Cancelled', `${report.filtered.length ? Math.round(report.cancelled / report.filtered.length * 100) : 0}%`, `${report.cancelled} of ${report.filtered.length} orders`, '#f47655')}
-      </div>
+  return <section className="min-w-0 space-y-3">
+    <div className="flex items-center justify-between gap-2">
+      <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">Reports</h2>
+      <button onClick={() => csvDownload(`shop-report-${from}-to-${to}.csv`, [['Period', 'Sales (Rs)', 'Orders', 'Items sold', 'Average order (Rs)'], ...report.trend.map(point => [point.key, Math.round(point.revenue), point.orders, point.units, Math.round(point.average)])])} className="min-h-11 rounded-full bg-white px-4 text-sm font-bold ring-1 ring-stone-300 active:scale-95">Download CSV</button>
+    </div>
+    <div className="flex items-center gap-2">
+      <div className={rail + ' flex-1'} role="group" aria-label="Period">{presets.map(([l, n]) => <button key={l} aria-pressed={rangeOn(n)} onClick={() => setRange(n)} className={chip(rangeOn(n))}>{l}</button>)}</div>
+      <button aria-expanded={more} onClick={() => setMore(!more)} className={chip(more || filtersOn > 0)}>Filters{filtersOn ? ` · ${filtersOn}` : ''}</button>
+    </div>
+    {more && <div style={{ animation: 'rise 250ms ease-out' }} className={panel + ' grid gap-3 sm:grid-cols-2'}>
+      <label className="text-sm font-semibold text-stone-700">From<input aria-label="Report start date" type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} className={field} /></label>
+      <label className="text-sm font-semibold text-stone-700">To<input aria-label="Report end date" type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className={field} /></label>
+      <label className="text-sm font-semibold text-stone-700">Order status<select value={status} onChange={e => setStatus(e.target.value)} className={field}><option value="all">Every status</option>{Object.entries(statusNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
+      <label className="text-sm font-semibold text-stone-700">Category<select value={category} onChange={e => setCategory(e.target.value)} className={field}><option value="all">All categories</option>{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</select></label>
+    </div>}
+
+    <div className="rounded-3xl p-5 text-white" style={{ background: 'linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 55%, black))' }}>
+      <p className="text-sm font-medium text-white/85">Sales · {label}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-4xl font-bold sm:text-5xl">{money(report.sales)}</p>
+      <p className="mt-1 text-sm text-white/85">{report.saleOrders.length.toLocaleString()} orders · cancelled orders not counted</p>
+    </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {tile('Orders', report.saleOrders.length.toLocaleString(), 'Not cancelled')}
+      {tile('Items sold', report.soldUnits.toLocaleString(), 'Units or kg as listed')}
+      {tile('Average order', money(avg), 'Per order')}
+      {tile('Cancelled', `${cancelPct}%`, `${report.cancelled} of ${report.filtered.length} orders`, report.cancelled ? 'text-rose-700' : 'text-stone-900')}
     </div>
 
-    <div className="grid gap-3 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-stone-200 sm:grid-cols-2 lg:grid-cols-6">
-      <label className="text-sm font-semibold text-stone-700">From<input aria-label="Report start date" type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} className={'mt-1 block w-full ' + input} /></label>
-      <label className="text-sm font-semibold text-stone-700">To<input aria-label="Report end date" type="date" value={to} min={from} onChange={e => setTo(e.target.value)} className={'mt-1 block w-full ' + input} /></label>
-      <label className="text-sm font-semibold text-stone-700">Order status<select value={status} onChange={e => setStatus(e.target.value)} className={'mt-1 block w-full ' + input}><option value="all">Every status</option>{Object.entries(statusNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
-      <label className="text-sm font-semibold text-stone-700">Category<select value={category} onChange={e => setCategory(e.target.value)} className={'mt-1 block w-full ' + input}><option value="all">All categories</option>{categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}</select></label>
-      <label className="text-sm font-semibold text-stone-700">Group by<select value={interval} onChange={e => setInterval(e.target.value as typeof interval)} className={'mt-1 block w-full ' + input}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select></label>
-      <label className="text-sm font-semibold text-stone-700">Chart shows<select value={metric} onChange={e => setMetric(e.target.value as Metric)} className={'mt-1 block w-full ' + input}>{Object.entries(metricNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
-    </div>
-
+    {empty ? <div className={panel + ' space-y-3 py-10 text-center'}><p className="font-semibold">No orders in this period</p><p className="text-sm text-stone-600">Try a longer period or clear the filters.</p><button onClick={() => { setRange(29); setStatus('all'); setCategory('all') }} className="min-h-12 rounded-2xl bg-[var(--brand)] px-6 font-bold text-white">Show last 30 days</button></div> : <>
     <div className={panel}>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><p className="text-sm font-semibold text-[var(--brand)]">Movement over time</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">{metricNames[metric]} by {interval}</h3></div><span className="text-xs text-stone-600">{report.trend.length} periods · {report.filtered.length} orders</span></div>
+      {head(`${metricNames[metric]} by ${interval}`, `${report.trend.length} ${interval}s · ${report.filtered.length} orders`)}
+      <div className={rail + ' mb-3'} role="group" aria-label="Chart shows">{(Object.entries(metricNames) as [Metric, string][]).map(([key, name]) => <button key={key} aria-pressed={metric === key} onClick={() => setMetric(key)} className={chip(metric === key)}>{name}</button>)}</div>
+      <div role="tablist" aria-label="Group by" className="mb-3 grid grid-cols-3 gap-1 rounded-2xl bg-stone-200/70 p-1">{(['day', 'week', 'month'] as const).map(k => <button key={k} role="tab" aria-selected={interval === k} onClick={() => setInterval(k)} className={'min-h-11 rounded-xl text-sm font-bold transition-colors ' + (interval === k ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600')}>{k === 'day' ? 'Days' : k === 'week' ? 'Weeks' : 'Months'}</button>)}</div>
       <div className="h-64 w-full sm:h-80"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartRows} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
         <defs><linearGradient id="sales-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand)" stopOpacity={0.34} /><stop offset="94%" stopColor="var(--brand)" stopOpacity={0.015} /></linearGradient></defs>
         <CartesianGrid stroke="#e7e5e4" vertical={false} strokeDasharray="3 6" />
-        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 10 }} minTickGap={24} />
-        <YAxis axisLine={false} tickLine={false} width={52} tick={{ fill: '#57534e', fontSize: 10 }} tickFormatter={value => metric === 'revenue' || metric === 'average' ? `${Math.round(value / 1000)}k` : value} />
-        <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 12 }} formatter={value => [metric === 'revenue' || metric === 'average' ? money(Number(value)) : Number(value).toLocaleString(), metricNames[metric]]} labelStyle={{ color: '#57534e', marginBottom: 4 }} />
+        <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 11 }} minTickGap={24} />
+        <YAxis axisLine={false} tickLine={false} width={44} tick={{ fill: '#57534e', fontSize: 11 }} tickFormatter={value => metric === 'revenue' || metric === 'average' ? `${Math.round(value / 1000)}k` : value} />
+        <Tooltip contentStyle={tip} formatter={value => [metric === 'revenue' || metric === 'average' ? money(Number(value)) : Number(value).toLocaleString(), metricNames[metric]]} labelStyle={{ color: '#57534e', marginBottom: 4 }} />
         <Area type="monotone" dataKey="value" stroke="var(--brand)" strokeWidth={3} fill="url(#sales-fill)" activeDot={{ r: 5, fill: 'var(--brand)', stroke: '#fff', strokeWidth: 2 }} />
       </AreaChart></ResponsiveContainer></div>
-      {!report.trend.length && <p className="py-4 text-center text-sm text-stone-600">No orders in this date range. Try widening the dates or changing filters.</p>}
     </div>
 
-    <div className="grid gap-4 lg:grid-cols-[1.3fr_.7fr]">
-      <div className={panel}>
-        <div className="mb-4"><p className="text-sm font-semibold text-[var(--brand)]">Product performance</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">What brings in sales</h3></div>
-        {report.productRows.length ? <div className="h-64"><ResponsiveContainer width="100%" height="100%"><BarChart data={report.productRows} layout="vertical" margin={{ top: 0, right: 12, left: 5, bottom: 0 }}>
-          <CartesianGrid stroke="#e7e5e4" horizontal={false} />
-          <XAxis type="number" hide />
-          <YAxis type="category" dataKey="name" width={88} axisLine={false} tickLine={false} tick={{ fill: '#44403c', fontSize: 11 }} />
-          <Tooltip cursor={{ fill: '#0000000a' }} contentStyle={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 12 }} formatter={(value, _name, props) => [`${money(Number(value))} · ${props.payload.units} ${props.payload.unit}`, 'Sales']} />
-          <Bar dataKey="sales" radius={[0, 6, 6, 0]}>{report.productRows.map((entry, index) => <Cell key={entry.name} fill={palette[index % palette.length]} />)}</Bar>
-        </BarChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-stone-600">Product sales will appear when orders fall in this range.</p>}
-      </div>
-      <div className={panel}>
-        <div><p className="text-sm font-semibold text-[var(--brand)]">Order desk</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Status mix</h3></div>
-        {report.statusRows.length ? <div className="relative h-48"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={report.statusRows} dataKey="value" nameKey="name" innerRadius={55} outerRadius={78} paddingAngle={3} stroke="none">{report.statusRows.map((row, index) => <Cell key={row.key} fill={palette[index % palette.length]} />)}</Pie><Tooltip contentStyle={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 12 }} /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><strong className="text-2xl">{report.filtered.length}</strong><span className="text-[10px] uppercase tracking-widest text-stone-600">orders</span></div></div> : <div className="flex h-48 items-center justify-center text-sm text-stone-600">Nothing to chart yet.</div>}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2">{report.statusRows.map((row, index) => <div key={row.key} className="flex items-center gap-2 text-xs text-stone-700"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: palette[index % palette.length] }} />{row.name}<span className="ml-auto text-stone-600">{row.value}</span></div>)}</div>
+    <div className="grid gap-3 lg:grid-cols-2">
+      <div className={panel}>{head('Best sellers', 'Top fruit by sales in this period')}{ranked(report.productRows.map(r => ({ name: r.name, sub: `${r.units.toLocaleString()} ${r.unit} sold`, value: r.sales })), report.productRows[0]?.sales || 0)}</div>
+      <div className={panel}>{head('Order status', 'All orders in this period')}
+        <div className="relative h-48"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={report.statusRows} dataKey="value" nameKey="name" innerRadius={55} outerRadius={78} paddingAngle={3} stroke="none">{report.statusRows.map(row => <Cell key={row.key} fill={statusColor[row.key] || '#a8a29e'} />)}</Pie><Tooltip contentStyle={tip} /></PieChart></ResponsiveContainer><div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"><strong className="text-2xl">{report.filtered.length}</strong><span className="text-xs text-stone-600">orders</span></div></div>
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">{report.statusRows.map(row => <div key={row.key} className="flex items-center gap-2 text-sm text-stone-700"><span className="h-3 w-3 shrink-0 rounded-full" style={{ background: statusColor[row.key] || '#a8a29e' }} />{row.name}<span className="ml-auto font-semibold">{row.value}</span></div>)}</div>
       </div>
     </div>
 
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <div className={panel}><p className="text-sm font-semibold text-[var(--brand)]">Basket loyalty</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Repeat customers</h3><p className="mb-4 mt-1 text-xs text-stone-600">Matched by phone number in this period</p>
-        {report.customerRows.length ? <div className="space-y-3">{report.customerRows.map((customer, index) => <div key={`${customer.name}-${index}`} className="flex items-center gap-3 border-t border-stone-200 pt-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-xs text-green-700">{customer.orders}×</span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{customer.name}</span><span className="text-sm font-semibold text-stone-900">{money(customer.sales)}</span></div>)}</div> : <p className="py-8 text-center text-sm text-stone-600">No repeat buyers in this period.</p>}
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className={panel}>{head('Repeat customers', 'Matched by phone number')}
+        {report.customerRows.length ? <ul className="space-y-3">{report.customerRows.map((customer, index) => <li key={`${customer.name}-${index}`} className="flex items-center gap-3"><span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-green-100 px-1 text-sm font-bold text-green-800">{customer.orders}×</span><span className="min-w-0 flex-1 truncate font-semibold">{customer.name}</span><span className="font-bold">{money(customer.sales)}</span></li>)}</ul> : <p className="py-6 text-center text-sm text-stone-600">No repeat customers in this period.</p>}
       </div>
-      <div className={panel}><p className="text-sm font-semibold text-[var(--brand)]">Category mix</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Sales by aisle</h3><p className="mb-4 mt-1 text-xs text-stone-600">Based on each product’s current category</p>
-        {report.categoryRows.length ? <div className="space-y-3">{report.categoryRows.slice(0, 6).map((row, index) => { const share = report.sales ? row.sales / report.sales * 100 : 0; return <div key={row.name}><div className="mb-1 flex justify-between gap-2 text-xs"><span className="truncate">{row.name}</span><span className="shrink-0 font-semibold text-stone-900">{money(row.sales)} · {Math.round(share)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full" style={{ width: `${Math.min(100, share)}%`, background: palette[index % palette.length] }} /></div></div>})}</div> : <p className="py-8 text-center text-sm text-stone-600">Categorized product sales will appear here.</p>}
-      </div>
-      <div className={panel}><p className="text-sm font-semibold text-[var(--brand)]">Catalog pulse</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Current shelf</h3><p className="mb-4 mt-1 text-xs text-stone-600">Live catalog, independent of date filters</p>
-        <div className="mb-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-stone-100 p-2"><strong className="block text-lg">{items.length}</strong><span className="text-[10px] uppercase tracking-wider text-stone-600">Listed</span></div><div className="rounded-xl bg-stone-100 p-2"><strong className="block text-lg text-green-700">{items.filter(item => item.available).length}</strong><span className="text-[10px] uppercase tracking-wider text-stone-600">Available</span></div><div className="rounded-xl bg-stone-100 p-2"><strong className="block text-lg text-rose-700">{items.filter(item => !item.available).length}</strong><span className="text-[10px] uppercase tracking-wider text-stone-600">Hidden</span></div></div>
-        <div className="space-y-2">{items.slice().sort((a, b) => Number(b.price) - Number(a.price)).slice(0, 4).map(item => <div key={item.id} className="flex items-center gap-2 border-t border-stone-200 pt-2 text-xs"><span className={'h-2 w-2 rounded-full ' + (item.available ? 'bg-green-600' : 'bg-rose-600')} /><span className="min-w-0 flex-1 truncate">{item.name}</span><span className="font-semibold text-stone-900">{money(Number(item.price))}/{item.unit}</span></div>)}</div>
+      <div className={panel}>{head('Sales by category', 'Uses each fruit’s current category')}
+        {report.categoryRows.length ? <ul className="space-y-3">{report.categoryRows.slice(0, 6).map((row, index) => { const share = report.sales ? row.sales / report.sales * 100 : 0; return <li key={row.name}><div className="mb-1 flex justify-between gap-2 text-sm"><span className="truncate font-semibold">{row.name}</span><span className="shrink-0 font-bold">{money(row.sales)} · {Math.round(share)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full" style={{ width: `${Math.min(100, share)}%`, background: palette[index % palette.length] }} /></div></li> })}</ul> : <p className="py-6 text-center text-sm text-stone-600">Add categories to your fruit to see this.</p>}
       </div>
     </div>
 
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className={panel}><p className="text-sm font-semibold text-[var(--brand)]">Trading rhythm</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Orders by weekday</h3><div className="mt-3 h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={report.weekdayCounts} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}><CartesianGrid stroke="#e7e5e4" vertical={false} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 10 }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 10 }} /><Tooltip contentStyle={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 12 }} /><Bar dataKey="orders" name="Orders" fill="var(--brand)" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
-      <div className={panel}><p className="text-sm font-semibold text-[var(--brand)]">Delivery clock</p><h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold">Orders by hour</h3><div className="mt-3 h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={report.hourCounts} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}><CartesianGrid stroke="#e7e5e4" vertical={false} /><XAxis dataKey="name" interval={2} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 10 }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 10 }} /><Tooltip contentStyle={{ background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 12 }} /><Bar dataKey="orders" name="Orders" fill="color-mix(in srgb, var(--brand) 55%, white)" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className={panel}>{head('Busiest days')}<div className="h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={report.weekdayCounts} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}><CartesianGrid stroke="#e7e5e4" vertical={false} /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 11 }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 11 }} /><Tooltip contentStyle={tip} /><Bar dataKey="orders" name="Orders" fill="var(--brand)" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
+      <div className={panel}>{head('Busiest hours')}<div className="h-48"><ResponsiveContainer width="100%" height="100%"><BarChart data={report.hourCounts} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}><CartesianGrid stroke="#e7e5e4" vertical={false} /><XAxis dataKey="name" interval={2} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 11 }} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#57534e', fontSize: 11 }} /><Tooltip contentStyle={tip} /><Bar dataKey="orders" name="Orders" fill="color-mix(in srgb, var(--brand) 55%, white)" radius={[5, 5, 0, 0]} /></BarChart></ResponsiveContainer></div></div>
     </div>
+    </>}
 
-    <div className="rounded-2xl bg-white p-4 text-xs leading-5 text-stone-600 ring-1 ring-stone-200">Reports use order totals and item snapshots. Cancelled orders are excluded from sales, units, and average basket. Category analysis uses each product’s current category, since historical order items do not store category snapshots. Inventory quantities, costs, profit, payment method breakdowns, and site conversion cannot be reported because those fields are not in the database.</div>
+    <div className={panel}>{head('Your fruit list', 'Right now, not affected by the period')}
+      <div className="grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-green-50 p-3"><strong className="block text-xl text-green-800">{items.filter(i => i.available && (i.stock_status || 'in_stock') === 'in_stock').length}</strong><span className="text-xs text-stone-700">In stock</span></div><div className="rounded-xl bg-amber-50 p-3"><strong className="block text-xl text-amber-800">{items.filter(i => i.available && (i.stock_status || 'in_stock') !== 'in_stock').length}</strong><span className="text-xs text-stone-700">Sold out</span></div><div className="rounded-xl bg-stone-100 p-3"><strong className="block text-xl">{items.filter(i => !i.available).length}</strong><span className="text-xs text-stone-700">Hidden</span></div></div>
+    </div>
+    <p className="px-1 text-xs leading-5 text-stone-600">Sales come from the order totals. Cancelled orders are left out of sales, items and averages. Profit and stock quantities are not tracked.</p>
   </section>
 }
