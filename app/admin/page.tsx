@@ -11,6 +11,14 @@ const NEXT: Record<string, string> = { placed: 'accepted', accepted: 'preparing'
 const ACT: Record<string, string> = { placed: 'Accept order', accepted: 'Start preparing', preparing: 'Out for delivery', out_for_delivery: 'Mark delivered' }
 const LBL: Record<string, string> = { placed: 'New', accepted: 'Accepted', preparing: 'Preparing', out_for_delivery: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled' }
 const PILL: Record<string, string> = { placed: 'bg-rose-100 text-rose-900', accepted: 'bg-sky-100 text-sky-900', preparing: 'bg-amber-100 text-amber-900', out_for_delivery: 'bg-violet-100 text-violet-900', delivered: 'bg-green-100 text-green-900', cancelled: 'bg-stone-200 text-stone-800' }
+const SKIN: Record<string, { label: string; card: string; bar: string; btn: string }> = {
+  placed: { label: 'NEW ORDER · accept now', card: 'bg-rose-50 ring-2 ring-rose-600', bar: 'bg-rose-600 text-white', btn: 'bg-rose-600' },
+  accepted: { label: 'Accepted', card: 'bg-sky-50 ring-1 ring-sky-300', bar: 'bg-sky-600 text-white', btn: 'bg-sky-600' },
+  preparing: { label: 'Preparing', card: 'bg-amber-50 ring-1 ring-amber-300', bar: 'bg-amber-700 text-white', btn: 'bg-amber-700' },
+  out_for_delivery: { label: 'Out for delivery', card: 'bg-violet-50 ring-1 ring-violet-300', bar: 'bg-violet-600 text-white', btn: 'bg-violet-600' },
+  delivered: { label: 'Delivered', card: 'bg-green-50 ring-1 ring-green-300', bar: 'bg-green-700 text-white', btn: 'bg-green-700' },
+  cancelled: { label: 'Cancelled', card: 'bg-stone-100 ring-1 ring-stone-300', bar: 'bg-stone-500 text-white', btn: 'bg-stone-600' },
+}
 const blank = { name: '', name_ur: '', description: '', price: '', unit: 'kg', tag: 'fresh', sale_price: '', available: true, stock_status: 'in_stock', image_url: '' }
 const ago = (d: string) => { const m = Math.round((Date.now() - +new Date(d)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) }
 const inp = 'mt-1 min-h-12 w-full rounded-xl border border-stone-300 bg-white px-3 text-base font-normal'
@@ -105,12 +113,12 @@ export default function Admin() {
           <label className="relative block"><span className="sr-only">Search orders</span><Icon d={I.search} className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" /><input type="search" value={oq} onChange={e => setOq(e.target.value)} placeholder="Search by name, phone or address" className={inp + ' mt-0! pl-11'} /></label>
           <div className={'flex gap-2' + (oRes ? ' hidden' : '')}>{(['active', 'done'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={'min-h-11 rounded-full px-5 text-sm font-semibold ring-1 ' + (view === v ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white ring-stone-300')}>{v === 'active' ? 'Active' : 'History'}</button>)}</div>
           {list.slice(0, oShown).map(o => (
-            <section key={o.id} className={card + (o.status === 'placed' ? ' ring-2 ring-[var(--brand)]' : '')}>
-              <div className="flex items-center justify-between"><span className={'rounded-full px-3 py-1 text-sm font-bold ' + PILL[o.status]}>{LBL[o.status]}</span><span className="text-sm text-stone-600">{ago(o.created_at)}</span></div>
+            <section key={o.id} style={o.status === 'placed' ? { animation: 'alert 1.4s ease-out infinite' } : undefined} className={'overflow-hidden rounded-2xl p-4 shadow-sm ' + (SKIN[o.status]?.card || 'bg-white ring-1 ring-stone-200')}>
+              <div className={'-mx-4 -mt-4 mb-3 flex items-center justify-between px-4 py-2.5 ' + (SKIN[o.status]?.bar || '')}><span className="font-bold">{SKIN[o.status]?.label || LBL[o.status]}</span><span className="text-sm opacity-90">{ago(o.created_at)}</span></div>
               <div className="mt-3 flex items-start justify-between gap-3"><div><p className="text-lg font-bold">{o.customer_name}</p><p><a href={'tel:' + o.phone} className="font-semibold text-[var(--brand)] underline">{o.phone}</a></p><p className="text-stone-700">{o.address}</p>{o.note && <p className="text-sm text-stone-600">Note: {o.note}</p>}</div><a href={'tel:' + o.phone} aria-label={'Call ' + o.customer_name} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-700 text-white"><Icon d={I.phone} /></a></div>
               <ul className="mt-3 space-y-1 border-t border-stone-200 pt-3">{o.items.map((l: any) => <li key={l.id} className="flex justify-between"><span>{l.name} × {l.qty} {l.unit}</span><span>Rs {l.price * l.qty}</span></li>)}</ul>
               <p className="mt-2 flex justify-between text-lg font-bold"><span>Total · Cash</span><span>Rs {o.total}</span></p>
-              {NEXT[o.status] && <div className="mt-3 flex gap-2"><button onClick={() => setStatus(o.id, NEXT[o.status])} className="min-h-14 flex-1 rounded-2xl bg-[var(--brand)] text-lg font-bold text-white">{ACT[o.status]}</button><button onClick={() => confirm('Cancel this order?') && setStatus(o.id, 'cancelled')} className="min-h-14 rounded-2xl bg-stone-100 px-4 font-semibold">Cancel</button></div>}
+              {NEXT[o.status] && <div className="mt-3 flex gap-2"><button onClick={() => setStatus(o.id, NEXT[o.status])} className={'min-h-14 flex-1 rounded-2xl text-lg font-bold text-white ' + (SKIN[o.status]?.btn || 'bg-[var(--brand)]')}>{ACT[o.status]}</button><button onClick={() => confirm('Cancel this order?') && setStatus(o.id, 'cancelled')} className="min-h-14 rounded-2xl bg-white px-4 font-semibold ring-1 ring-stone-300">Cancel</button></div>}
             </section>))}
           {list.length > oShown && <div ref={sentinel(setOShown)} key={oShown} className="h-8" />}
           {list.length === 0 && <p className={card + ' py-10 text-center text-stone-600'}>{oRes ? 'No orders match that search.' : view === 'active' ? 'No active orders. New ones will appear here.' : 'No past orders yet.'}</p>}

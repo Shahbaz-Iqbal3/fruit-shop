@@ -43,3 +43,4 @@ html { -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
 button { -webkit-user-select: none; user-select: none; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 @media (display-mode: standalone) { html, body { overscroll-behavior-y: none; } body { -webkit-user-select: none; user-select: none; } input, textarea, select { -webkit-user-select: text; user-select: text; } }
+@keyframes alert { 0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, .5); } 50% { box-shadow: 0 0 0 12px rgba(225, 29, 72, 0); } }
