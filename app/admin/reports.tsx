@@ -104,8 +104,8 @@ export default function Reports({ orders, items, categories }: Props) {
   const avg = report.saleOrders.length ? report.sales / report.saleOrders.length : 0
   const cancelPct = report.filtered.length ? Math.round(report.cancelled / report.filtered.length * 100) : 0
   const empty = !report.saleOrders.length
-  const chip = (on: boolean) => 'min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white text-stone-800 ring-stone-300')
-  const rail = 'flex gap-2 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+  const chip = (on: boolean) => 'min-h-8 h-8 shrink-0 rounded-full px-5 text-sm font-semibold ring-1 transition-colors ' + (on ? 'bg-stone-900 text-white ring-stone-900' : 'bg-white text-stone-800 ring-stone-300')
+  const rail = 'flex gap-2 p-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
   const tip = { background: '#fff', border: '1px solid #e7e5e4', borderRadius: 12, color: '#1c1917', fontSize: 13 }
   const head = (t: string, sub?: string) => <div className="mb-3"><h3 className="font-[family-name:var(--font-display)] text-xl font-bold">{t}</h3>{sub && <p className="text-sm text-stone-600">{sub}</p>}</div>
   const tile = (name: string, value: string, note: string, color = 'text-stone-900') => <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200"><p className="text-sm text-stone-600">{name}</p><p className={'mt-0.5 text-2xl font-bold ' + color}>{value}</p><p className="text-xs text-stone-600">{note}</p></div>
@@ -115,7 +115,7 @@ export default function Reports({ orders, items, categories }: Props) {
   return <section className="min-w-0 space-y-3">
     <div className="flex items-center justify-between gap-2">
       <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold">Reports</h2>
-      <button onClick={() => csvDownload(`shop-report-${from}-to-${to}.csv`, [['Period', 'Sales (Rs)', 'Orders', 'Items sold', 'Average order (Rs)'], ...report.trend.map(point => [point.key, Math.round(point.revenue), point.orders, point.units, Math.round(point.average)])])} className="min-h-11 rounded-full bg-white px-4 text-sm font-bold ring-1 ring-stone-300 active:scale-95">Download CSV</button>
+      <button onClick={() => csvDownload(`shop-report-${from}-to-${to}.csv`, [['Period', 'Sales (Rs)', 'Orders', 'Items sold', 'Average order (Rs)'], ...report.trend.map(point => [point.key, Math.round(point.revenue), point.orders, point.units, Math.round(point.average)])])} className="min-h-8 h-8 rounded-full bg-white px-5 text-sm font-bold ring-1 ring-stone-300 active:scale-95">Download CSV</button>
     </div>
     <div className="flex items-center gap-2">
       <div className={rail + ' flex-1'} role="group" aria-label="Period">{presets.map(([l, n]) => <button key={l} aria-pressed={rangeOn(n)} onClick={() => setRange(n)} className={chip(rangeOn(n))}>{l}</button>)}</div>

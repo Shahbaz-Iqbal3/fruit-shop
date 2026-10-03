@@ -31,9 +31,9 @@ export default function PriceEditor({ items, cats, onClose, onSaved }: { items: 
           <div className="flex items-center justify-between"><h2 className={disp + ' text-2xl font-bold'}>Update prices</h2><button aria-label="Close" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100"><Icon d={I.x} /></button></div>
           <div className="flex gap-2"><input type="search" aria-label="Search fruit" placeholder="Search fruit" value={q} onChange={e => setQ(e.target.value)} className="min-h-12 min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-3 text-base" />
             {cats.length > 0 && <select aria-label="Category" value={cat} onChange={e => setCat(e.target.value)} className="min-h-12 max-w-[40%] rounded-xl border border-stone-300 bg-white px-2 text-base"><option value="all">All</option>{cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}<option value="none">No category</option></select>}</div>
-          <div className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"><span className="shrink-0 text-sm font-semibold text-stone-700">Change all shown</span>
-            {[-10, -5, 5, 10].map(p => <button key={p} onClick={() => bump(p)} className="min-h-11 shrink-0 rounded-full bg-stone-100 px-4 text-sm font-bold ring-1 ring-stone-300">{p > 0 ? '+' : '−'}{Math.abs(p)}%</button>)}
-            <button onClick={reset} className="min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold text-stone-700 underline">Undo</button></div>
+          <div className="flex items-center gap-2 p-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"><span className="shrink-0 text-sm font-semibold text-stone-700">Change all shown</span>
+            {[-10, -5, 5, 10].map(p => <button key={p} onClick={() => bump(p)} className="min-h-8 h-8 shrink-0 rounded-full bg-stone-100 px-5 text-sm font-bold ring-1 ring-stone-300">{p > 0 ? '+' : '−'}{Math.abs(p)}%</button>)}
+            <button onClick={reset} className="min-h-8 h-8 shrink-0 rounded-full px-3 text-sm font-semibold text-stone-700 underline">Undo</button></div>
         </div>
         <ul className="mt-1 space-y-2">
           {shown.map(i => { const d = drafts[i.id], sale = i.tag === 'on_sale'; return (
